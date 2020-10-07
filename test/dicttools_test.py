@@ -22,7 +22,7 @@ from dicttools import *
 
 import unittest
 
-from dicttools.json.signature import any_key, AnyKey
+from dicttools.nested.signature import any_key, AnyKey
 
 
 # class TestAny(unittest.TestCase):

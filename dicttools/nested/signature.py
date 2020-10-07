@@ -18,7 +18,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from typing import List, Callable
 
-from dicttools.json.occurrences import *
+from dicttools.nested.occurrences import *
 
 
 class Glob(ABC):

@@ -23,8 +23,8 @@ from typing import List
 
 import unittest
 
-from dicttools.json.funcs import update, map_dict
-from dicttools.json.signature import Signature, any_of_keys, any_key
+from dicttools.nested.functions import update, map_dict
+from dicttools.nested.signature import Signature, any_of_keys, any_key
 
 
 class TestFuncs(unittest.TestCase):
