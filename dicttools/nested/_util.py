@@ -42,29 +42,29 @@ class idx:
         return self.i
 
 
-def to_nested(d: Mapping, apply: Callable[[int], K] = idx):
+def to_canonical(d: Mapping, apply: Callable[[int], K] = idx):
     """
-    Transform a JSON dict into a nested dict.
+    Transform a JSON dict into a fully nested dict, without lists.
 
-    >>> to_nested({'a': ['b', 'c']})
+    >>> to_canonical({'a': ['b', 'c']})
     {'a': {idx(0): 'b', idx(1): 'c'}}
 
     :param d: a JSON mapping
     :param apply: a function that converts int indices to hashable keys
-    :return: a nested mapping
+    :return: a fully nested mapping
     """
     if isinstance(d, Mapping):
-        return {k: to_nested(v, apply) for k, v in d.items()}
+        return {k: to_canonical(v, apply) for k, v in d.items()}
     elif is_plain_iterable(d):
-        return {apply(i): to_nested(v, apply) for i, v in enumerate(d)}
+        return {apply(i): to_canonical(v, apply) for i, v in enumerate(d)}
     else:
         return d
 
 
 def to_json(d: Mapping,
-            accept: Callable[[Union[idx, int, str]], int] = idx) -> Mapping:
+            accept: Union[idx, int, str] = idx) -> Mapping:
     """
-    Transform a nested dict into a JSON dict.
+    Transform a fully nested dict into a JSON dict.
 
     >>> to_json({'a': {idx(0): 'b', idx(1): 'c'}})
     {'a': ['b', 'c']}

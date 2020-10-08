@@ -19,7 +19,7 @@
 
 import unittest
 
-from dicttools.nested import to_nested, idx, to_json, nested_expand
+from dicttools.nested import to_canonical, idx, to_json, nested_expand
 
 
 class FuncsTest(unittest.TestCase):
@@ -28,7 +28,7 @@ class FuncsTest(unittest.TestCase):
             ({'a': {0: 'b', 1: 'c'}}, ({'a': ['b', 'c']}, int)),
             ({'a': {'0': 'b', '1': 'c'}}, ({'a': ['b', 'c']}, str)),
         ]:
-            self.assertEqual(to_nested(*args), expected)
+            self.assertEqual(to_canonical(*args), expected)
 
     def test_to_json(self):
         for expected, args in [
