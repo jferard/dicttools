@@ -1,5 +1,6 @@
 # coding: utf-8
-#  DictTools. Provides functions and operations to handle, explore,#     modify Python nested dicts, especially JSON-like data
+#  DictTools. Provides functions and operations to handle, explore,
+#     modify Python nested dicts, especially JSON-like data
 #     Copyright (C) 2020 J. Férard <https://github.com/jferard>
 #
 #  This file is part of DictTools.
@@ -16,21 +17,23 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from typing import List, Callable
-
-from dicttools.nested.occurrences import *
+from abc import ABC, abstractmethod
+from typing import (Callable, Any, Tuple, Sequence, Generic, TypeVar, Optional,
+                    Union)
+from dicttools.nested._occurrences import (Occurrences, once_instance,
+                                           occurrences)
 
 
 class Glob(ABC):
     """
-    As is shell, `Glob` represents a chunk of a signature that can accept
+    As in shell, `Glob` represents a chunk of a signature that can accept
     multiple values.
     """
 
-    def try_key(self, k: object) -> "Glob":
+    def try_key(self, k: Any) -> Optional["Glob"]:
         """
-        Try to consume the key `k` and return the `Glob` after the key was
-        accepted.
+        Try to consume the key `j` and return the `Glob` after the key was
+        accepted, or None.
 
         :param k: the key to test
         :return: a new instance of `Glob`
@@ -38,7 +41,7 @@ class Glob(ABC):
         """
         raise KeyError
 
-    def try_index(self, j: int) -> "Glob":
+    def try_index(self, j: int) -> Optional["Glob"]:
         """
         Try to consume the index `i` and return the `Glob` after the index was
         accepted.
@@ -56,29 +59,37 @@ class Glob(ABC):
         return False
 
     @abstractmethod
-    def __getitem__(self, item):
-        pass
-
-    @abstractmethod
     def __repr__(self):
         pass
+
+
+T = TypeVar('T', bound=Glob)
+
+
+class GlobBuilder(ABC, Generic[T]):
+    @abstractmethod
+    def __getitem__(self, item: Union[slice, int]) -> T:
+        pass
+
+
+Chunk = Union[Any, Glob]
 
 
 #######
 # all #
 #######
 class AnyItem(Glob):
-    def __init__(self, occurrences=once_instance):
+    def __init__(self, occurrences: Occurrences = once_instance):
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k: Any) -> Optional[Glob]:
         o = self._occurrences.next()
         if o is None:
             return None
         else:
             return AnyItem(o)
 
-    def try_index(self, j) -> Glob:
+    def try_index(self, j: int) -> Optional[Glob]:
         o = self._occurrences.next()
         if o is None:
             return None
@@ -88,23 +99,34 @@ class AnyItem(Glob):
     def can_skip(self) -> bool:
         return self._occurrences.can_skip()
 
-    def __getitem__(self, item):
+    def __repr__(self):
+        return f"any_item{self._occurrences}"
+
+
+class any_item(GlobBuilder[AnyItem]):
+    """
+    >>> g = any_item[:2]
+    >>> g.try_key(1)
+    any_item[1:1]
+    >>> g.try_key(1).try_key(1) is None
+    True
+   """
+
+    def __class_getitem__(cls, item: Union[range, int]) -> AnyItem:
         """
         :param item: int or slice
         :return:
         """
         return AnyItem(occurrences(item))
 
-    def __repr__(self):
-        return f"any_item{self._occurrences}"
-
 
 class ItemIn(Glob):
-    def __init__(self, vs, occurrences=once_instance):
+    def __init__(self, vs: Union[Sequence[Any], Sequence[int]],
+                 occurrences: Occurrences = once_instance):
         self._vs = vs
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k: Any) -> Optional[Glob]:
         if k in self._vs:
             o = self._occurrences.next()
             if o is None:
@@ -114,8 +136,8 @@ class ItemIn(Glob):
         else:
             raise KeyError()
 
-    def try_index(self, k) -> Glob:
-        if k in self._vs:
+    def try_index(self, j) -> Optional[Glob]:
+        if j in self._vs:
             o = self._occurrences.next()
             if o is None:
                 return None
@@ -124,7 +146,7 @@ class ItemIn(Glob):
         else:
             raise IndexError()
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: Union[range, int]) -> Glob:
         return ItemIn(self._vs, occurrences(item))
 
     def __repr__(self):
@@ -137,7 +159,7 @@ class ItemNotIn(Glob):
         self._vs = vs
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k) -> Optional[Glob]:
         if k in self._vs:
             o = self._occurrences.next()
             if o is None:
@@ -171,7 +193,7 @@ class ItemMatching(Glob):
         self._func = func
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k) -> Optional[Glob]:
         if self._func(k):
             o = self._occurrences.next()
             if o is None:
@@ -205,7 +227,7 @@ class AnyKey(Glob):
     def __init__(self, occurrences=once_instance):
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k) -> Optional[Glob]:
         o = self._occurrences.next()
         if o is None:
             return None
@@ -231,7 +253,7 @@ class KeyIn(Glob):
         self._ks = ks
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k) -> Optional[Glob]:
         if k in self._ks:
             o = self._occurrences.next()
             if o is None:
@@ -254,7 +276,7 @@ class KeyNotIn(Glob):
         self._ks = ks
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k) -> Optional[Glob]:
         if k in self._ks:
             o = self._occurrences.next()
             if o is None:
@@ -278,7 +300,7 @@ class KeyMatching(Glob):
         self._func = func
         self._occurrences = occurrences
 
-    def try_key(self, k) -> Glob:
+    def try_key(self, k) -> Optional[Glob]:
         if self._func(k):
             o = self._occurrences.next()
             if o is None:
@@ -302,7 +324,7 @@ class AnyIndex(Glob):
     def __init__(self, occurrences=once_instance):
         self._occurrences = occurrences
 
-    def try_index(self, k) -> Glob:
+    def try_index(self, k) -> Optional[Glob]:
         o = self._occurrences.next()
         if o is None:
             return None
@@ -393,9 +415,9 @@ class IndexMatching(Glob):
 
 
 ###########
-# builder #
+# builder #
 ###########
-class GlobBuilder:
+class GlobBuilder0:
     def any_item(self):
         return AnyItem()
 
@@ -445,11 +467,12 @@ class Signature(Glob):
     KeyError: 'b vs c'
     """
 
-    def __init__(self, *chunks, occurrences=once_instance):
+    def __init__(self, *chunks: Chunk,
+                 occurrences: Occurrences = once_instance):
         self._chunks = chunks
         self._occurrences = occurrences
 
-    def try_key(self, k):
+    def try_key(self, k: Any) -> Optional["Signature"]:
         if not self._chunks:
             return None
 
@@ -462,7 +485,8 @@ class Signature(Glob):
             except AttributeError:
                 raise KeyError(f"{c0} vs {k}")
 
-    def _try_key_glob(self, c0, cs, k):
+    def _try_key_glob(self, c0: Chunk, cs: Tuple[Chunk], k: Any
+                      ) -> Optional["Signature"]:
         try:
             c0 = c0.try_key(k)
         except KeyError:
@@ -479,7 +503,7 @@ class Signature(Glob):
             else:
                 return Signature(c0, *cs, occurrences=self._occurrences)
 
-    def can_skip(self):
+    def can_skip(self) -> bool:
         if self._occurrences.can_skip():
             return True
         try:
@@ -499,8 +523,8 @@ def signature(*chunks):
     return Signature(chunks)
 
 
-glob = GlobBuilder()
-any_item = glob.any_item()
+glob = GlobBuilder0()
+# any_item = glob.any_item()
 any_key = glob.any_key()
 any_index = glob.any_index()
 any_of_items = glob.item_in
@@ -509,4 +533,5 @@ any_of_indices = glob.index_in
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

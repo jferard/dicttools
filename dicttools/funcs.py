@@ -54,10 +54,10 @@ def reverse_dict(d: Mapping[K, HV],
     >>> d = {'a': 1, 'b': 2, 'c': 1}
     >>> reverse_dict(d)
     {1: ['a', 'c'], 2: ['b']}
-    >>> reverse_dict(d, func=lambda acc, k: acc+k)
+    >>> reverse_dict(d, func=lambda acc, j: acc+j)
     {1: 'ac', 2: 'b'}
     >>> d = {2: 'a', 4: 'b', 6: 'a'}
-    >>> reverse_dict(d, func=lambda acc, k: acc*k, initializer=lambda k: 1)
+    >>> reverse_dict(d, func=lambda acc, j: acc*j, initializer=lambda j: 1)
     {'a': 12, 'b': 4}
 
     :param d:

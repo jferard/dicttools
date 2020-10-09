@@ -18,9 +18,10 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from dataclasses import MISSING, is_dataclass, fields
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, Callable, Tuple, Iterator, Union
 
 from dicttools.nested._util import is_plain_iterable
+from dicttools.types import Nested, NestedItem, Path
 
 
 def update(sig, data, f):
@@ -95,7 +96,7 @@ def find(signature, data):
             except KeyError:
                 pass
             else:
-                #                    print(new_sig, k)
+                #                    print(new_sig, j)
                 new_path = cur_path + [k]
                 new_data = data[k]
                 if new_sig:
@@ -184,3 +185,47 @@ def map_dict(d, func, default=None, only_terminal=True):
         return map_dict_only_terminal(None, d, [])[1]
     else:
         return map_dict_all(None, d, [])[1]
+
+
+from enum import Enum
+
+Result = Enum('Result', 'Yes No Maybe')
+
+
+def nested_filter(d: Nested, func: Union[Callable[[Path, bool], Result], Callable[[Path], bool]]
+                  ) -> Iterator[NestedItem]:
+    """
+
+
+    >>> func = lambda path, final: Result.Maybe if len(path) < 2 else Result.Yes if len(path) < 3 else Result.No
+    >>> list(nested_filter({'a':{'b': 1}, 'c':{'d':{'e':{'f': 2}}}}, func))
+    [(('a', 'b'), 1), (('c', 'd'), {'e': {'f': 2}})]
+    >>> func = lambda path, final: Result.Maybe if len(path) < 2 else Result.Yes if len(path) < 3 and final else Result.No
+    >>> list(nested_filter({'a':{'b': 1}, 'c':{'d':{'e':{'f': 2}}}}, func))
+    [(('a', 'b'), 1)]
+
+    :param d: a nested dict
+    :param func: a function that takes a path and returns True if: 1. this path meets the condition; 2. a extension of this path may meet the condition,
+    """
+    def nested_filter_aux(d: Nested, cur_path: Path) -> Iterator[NestedItem]:
+        if isinstance(d, Mapping):
+            result = func(cur_path, False)
+            if result is Result.Yes:
+                yield cur_path, d
+            elif result is Result.Maybe:
+                for k, v in d.items():
+                    next_path = cur_path + (k,)
+                    yield from nested_filter_aux(v, next_path)
+        elif is_plain_iterable(d):
+            result = func(cur_path, False)
+            if result is Result.Yes:
+                yield cur_path, d
+            elif result is Result.Maybe:
+                for i, v in enumerate(d):
+                    next_path = cur_path + (idx(i),)
+                    yield from nested_filter_aux(v, next_path)
+        else:
+            if func(cur_path, True) is Result.Yes:
+                yield cur_path, d
+
+    yield from nested_filter_aux(d, tuple())

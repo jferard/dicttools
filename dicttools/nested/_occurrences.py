@@ -17,12 +17,38 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from typing import List, Optional
+"""
+The `Occurrences` class represents a number of occurrence. An occurrence is
+consumed by `next()`, and may or no be skipped (`can_skip`).
 
+>>> once_instance.next() is None
+True
+>>> any_number_instance.next()
+[:]
+>>> at_least(3).next()
+[2:]
+>>> at_most(3).next()
+[:2]
+>>> between(3, 5).next()
+[2:4]
+>>> between(1, 3).next()
+[:2]
+>>> exactly(3).next()
+[2:2]
+>>> exactly(1).next() is None
+True
+"""
+
+from typing import List, Optional, Union
 from abc import ABC, abstractmethod
 
 
 class Occurrences(ABC):
+    """
+    A class to specify the number of occurrences of a glob.
+
+    """
+
     @abstractmethod
     def next(self) -> Optional["Occurrences"]:
         """
@@ -40,7 +66,7 @@ class Occurrences(ABC):
         pass
 
 
-class Once(Occurrences):
+class _Once(Occurrences):
     def next(self) -> Optional[Occurrences]:
         return None
 
@@ -51,10 +77,10 @@ class Once(Occurrences):
         return "[1:1]"
 
 
-once_instance: Once = Once()
+once_instance: _Once = _Once()
 
 
-class AnyNumber(Occurrences):
+class _AnyNumber(Occurrences):
     def next(self) -> Optional[Occurrences]:
         return self
 
@@ -65,10 +91,10 @@ class AnyNumber(Occurrences):
         return "[:]"
 
 
-any_number_instance: AnyNumber = AnyNumber()
+any_number_instance: _AnyNumber = _AnyNumber()
 
 
-class AtLeastN(Occurrences):
+class _AtLeastN(Occurrences):
     def __init__(self, n: int):
         assert n > 0
         self._n = n
@@ -83,18 +109,20 @@ class AtLeastN(Occurrences):
         return f"[{self._n}:]"
 
 
-at_least_instances: List[Optional[Occurrences]] = [any_number_instance] + [
-    AtLeastN(i) for i in range(1, 10)]
+_at_least_instances: List[Optional[Occurrences]] = [any_number_instance] + [
+    _AtLeastN(i) for i in range(1, 10)]
 
 
-def at_least(n):
-    if n >= 10:
-        return AtLeastN(n)
+def at_least(n: int):
+    if n == 0:
+        return any_number_instance
+    if n < 10:
+        return _at_least_instances[n]
     else:
-        return at_least_instances[n]
+        return _AtLeastN(n)
 
 
-class AtMostN(Occurrences):
+class _AtMostN(Occurrences):
     instances: List[Occurrences] = None
 
     def __init__(self, n: int):
@@ -111,18 +139,22 @@ class AtMostN(Occurrences):
         return f"[:{self._n}]"
 
 
-at_most_instances: List[Optional[Occurrences]] = [None] + [
-    AtMostN(i) for i in range(1, 10)]
+_at_most_instances: List[Optional[Occurrences]] = [None] + [
+    _AtMostN(i) for i in range(1, 10)]
 
 
-def at_most(n):
-    if n >= 10:
-        return AtMostN(n)
+def at_most(n: int) -> Occurrences:
+    if n == 0:
+        raise ValueError("At most value must be positive")
+    elif n == 1:
+        return once_instance
+    elif n < 10:
+        return _at_most_instances[n]
     else:
-        return at_most_instances[n]
+        return _AtMostN(n)
 
 
-class BetweenMAndN(Occurrences):
+class _Between(Occurrences):
     def __init__(self, m: int, n: int):
         assert n > m > 0
         self._m = m
@@ -130,9 +162,9 @@ class BetweenMAndN(Occurrences):
 
     def next(self) -> Optional[Occurrences]:
         if self._m > 1:
-            return BetweenMAndN(self._m - 1, self._n - 1)
+            return _Between(self._m - 1, self._n - 1)
         elif self._m == 1:
-            return AtMostN(self._n - 1)
+            return _AtMostN(self._n - 1)
         else:
             raise Exception()
 
@@ -143,7 +175,19 @@ class BetweenMAndN(Occurrences):
         return f"[{self._m}:{self._n}]"
 
 
-class Exactly(Occurrences):
+def between(m: int, n: int) -> Occurrences:
+    if m < 0 or n < 0:
+        raise ValueError()
+
+    if m == 0:
+        return at_most(n)
+    elif m == n:
+        return exactly(m)
+    else:
+        return _Between(m, n)
+
+
+class _Exactly(Occurrences):
     def __init__(self, n: int):
         self._n = n
 
@@ -157,18 +201,18 @@ class Exactly(Occurrences):
         return f"[{self._n}:{self._n}]"
 
 
-exactly_instances: List[Optional[Occurrences]] = [None] + [
-    Exactly(i) for i in range(1, 10)]
+_exactly_instances: List[Optional[Occurrences]] = [None] + [
+    _Exactly(i) for i in range(1, 10)]
 
 
-def exactly(n):
+def exactly(n: int) -> Occurrences:
     if n >= 10:
-        return Exactly(n)
+        return _Exactly(n)
     else:
-        return exactly_instances[n]
+        return _exactly_instances[n]
 
 
-def occurrences(item):
+def occurrences(item: Union[range, int]) -> Occurrences:
     """
     Create an instance of occurrences
 
@@ -202,7 +246,7 @@ def occurrences(item):
         elif item.stop == item.start:
             return exactly(item.start)
         else:
-            return BetweenMAndN(item.start, item.stop)
+            return _Between(item.start, item.stop)
     elif isinstance(item, int):
         return exactly(item)
     else:

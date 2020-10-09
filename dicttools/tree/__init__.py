@@ -17,14 +17,10 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from typing import (NewType, Any, Mapping, Union, Tuple, TypeVar)
-from collections.abc import Hashable
+"""
+In Python, `dict` objects are a very convenient way to represent trees.
+This module provides some basic function to mapnipulate those dict-as-trees.
+For a more complete tree data structure, you should use a Node class or,
+if the tree is a binary tree, a list.
+"""
 
-K = TypeVar('K', bound=Hashable)
-V = TypeVar('V')
-HV = TypeVar('HV', bound=Hashable)
-F = TypeVar('F')
-
-Nested = NewType('Nested', Mapping)
-Path = NewType('Path', Tuple[Any])
-NestedItem = NewType('NestedItem', Tuple[Path, Any])
