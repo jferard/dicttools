@@ -35,3 +35,4 @@
 
 from dicttools.json._util import *
 from dicttools.json._operations import *
+from dicttools.json._signature import *

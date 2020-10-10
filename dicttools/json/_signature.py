@@ -18,6 +18,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from abc import ABC, abstractmethod
+from copy import copy
 from typing import (Callable, Any, Tuple, Sequence, Generic, TypeVar, Optional,
                     Union)
 
@@ -59,8 +60,12 @@ class ItemMatches(Generic[T]):
             if o is None:
                 return None
             else:
-                self._occurrences = o
-                return self
+                ret = ItemMatches(self._func, o)
+                ret.__class__ = self.__class__
+                for k, v in self.__dict__.items():
+                    if k not in {"_func", "_occurrences"}:
+                        ret.__dict__[k] = v
+                return ret
         else:
             raise KeyError(f"Unexpected item {repr(k)}")
 
@@ -435,8 +440,8 @@ class Signature(ItemMatches):
     """
     >>> Signature(any_key[:]).take("a")
     Signature([any_key[:]], 1:1)
-    >>> Signature("b").take("b")
-    Signature([], 1:1)
+    >>> Signature("b").take("b") is None
+    True
     >>> Signature("b").take("c")
     Traceback (most recent call last):
     ...
@@ -456,7 +461,10 @@ class Signature(ItemMatches):
 
         c0, *cs = self._chunks
         if c0 == k:
-            return Signature(*cs)
+            if cs:
+                return Signature(*cs)
+            else:
+                return None
         else:
             try:
                 return self._try_key_glob(c0, cs, k)

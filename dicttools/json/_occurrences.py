@@ -24,17 +24,17 @@ consumed by `next()`, and may or no be skipped (`can_skip`).
 >>> once_instance.next() is None
 True
 >>> any_number_instance.next()
-[:]
+:
 >>> at_least(3).next()
-[2:]
+2:
 >>> at_most(3).next()
-[:2]
+:2
 >>> between(3, 5).next()
-[2:4]
+2:4
 >>> between(1, 3).next()
-[:2]
+:2
 >>> exactly(3).next()
-[2:2]
+2:2
 >>> exactly(1).next() is None
 True
 """
@@ -217,13 +217,13 @@ def occurrences(item: Union[range, int]) -> Occurrences:
     Create an instance of occurrences
 
     >>> occurrences(slice(5, None))
-    [5:]
+    5:
     >>> occurrences(slice(None, 5))
-    [:5]
+    :5
     >>> occurrences(slice(5, 5))
-    [5:5]
+    5:5
     >>> occurrences(slice(5, 10))
-    [5:10]
+    5:10
 
     :param item: int or slice
     :return: an instance of Occurrences

@@ -245,8 +245,8 @@ def difference(d1, d2, func=lambda v1, v2: v1 if v1 != v2 else None):
 
 def symmetric_difference(d1, d2, func=lambda v1, v2: v1 if v1 != v2 else None):
     """
-    >>> symmetric_difference({'a': 1, 'b': 2}, {'b': 2, 'c': 3})
-    {'a': 1, 'c': 3}
+    >>> symmetric_difference({'a': 1, 'b': 2}, {'b': 2, 'c': 3}) == {'a': 1, 'c': 3}
+    True
     """
     if isinstance(d1, Mapping) and isinstance(d2, Mapping):
         d1_keys = set(d1)

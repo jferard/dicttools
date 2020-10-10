@@ -20,7 +20,7 @@ install:
 
 # script
 script:
-  - py.test --ignore=example --cov=py4lo --cov=lib && py.test --ignore=example --ignore=test --ignore=py4lo/__main__.py --cov-append --doctest-modules --cov=lib
+  - py.test --ignore=example --cov=py4lo --cov=lib && py.test --ignore=example --ignore=test --ignore=py4lo/__main__.py --cov-append --doctest-modules --cov=dicttools
 
 
 after_success:
