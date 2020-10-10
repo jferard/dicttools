@@ -33,5 +33,5 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dicttools.nested._util import *
-from dicttools.nested._operations import *
+from dicttools.json._util import *
+from dicttools.json._operations import *

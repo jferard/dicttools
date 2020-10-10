@@ -19,7 +19,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-from dicttools.nested import union, isdisjoint, intersection
+from dicttools.json import union, isdisjoint, intersection
 
 
 class TestDisjoint(unittest.TestCase):

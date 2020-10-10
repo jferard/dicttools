@@ -19,7 +19,7 @@
 
 import unittest
 
-from dicttools.nested import to_canonical, idx, to_json, nested_expand
+from dicttools.json import to_canonical, idx, to_json, nested_expand
 
 
 class FuncsTest(unittest.TestCase):

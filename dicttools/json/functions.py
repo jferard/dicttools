@@ -20,7 +20,7 @@
 from dataclasses import MISSING, is_dataclass, fields
 from typing import Mapping, Sequence, Callable, Tuple, Iterator, Union
 
-from dicttools.nested._util import is_plain_iterable
+from dicttools.json._util import is_plain_iterable
 from dicttools.types import Nested, NestedItem, Path
 
 
@@ -92,7 +92,7 @@ def find(signature, data):
     def find_in_dict(sig, data, cur_path):
         for k in list(data):
             try:
-                new_sig = sig.try_key(k)
+                new_sig = sig.take(k)
             except KeyError:
                 pass
             else:

@@ -74,7 +74,7 @@ class _Once(Occurrences):
         return False
 
     def __repr__(self):
-        return "[1:1]"
+        return "1:1"
 
 
 once_instance: _Once = _Once()
@@ -88,7 +88,7 @@ class _AnyNumber(Occurrences):
         return True
 
     def __repr__(self):
-        return "[:]"
+        return ":"
 
 
 any_number_instance: _AnyNumber = _AnyNumber()
@@ -106,7 +106,7 @@ class _AtLeastN(Occurrences):
         return False
 
     def __repr__(self):
-        return f"[{self._n}:]"
+        return f"{self._n}:"
 
 
 _at_least_instances: List[Optional[Occurrences]] = [any_number_instance] + [
@@ -136,7 +136,7 @@ class _AtMostN(Occurrences):
         return True
 
     def __repr__(self):
-        return f"[:{self._n}]"
+        return f":{self._n}"
 
 
 _at_most_instances: List[Optional[Occurrences]] = [None] + [
@@ -172,7 +172,7 @@ class _Between(Occurrences):
         return False
 
     def __repr__(self):
-        return f"[{self._m}:{self._n}]"
+        return f"{self._m}:{self._n}"
 
 
 def between(m: int, n: int) -> Occurrences:
@@ -198,7 +198,7 @@ class _Exactly(Occurrences):
         return False
 
     def __repr__(self):
-        return f"[{self._n}:{self._n}]"
+        return f"{self._n}:{self._n}"
 
 
 _exactly_instances: List[Optional[Occurrences]] = [None] + [

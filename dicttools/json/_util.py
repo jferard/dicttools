@@ -19,10 +19,9 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from dataclasses import dataclass
 from functools import reduce
-from typing import Mapping, Any, Iterable, Collection, Union, Generator, \
-    Iterator, Tuple, AnyStr, MutableMapping
+from typing import (Mapping, Iterable, Collection, Iterator, MutableMapping,
+                    Callable, Union, Any, Tuple)
 
-from dicttools.nested.signature import *
 from dicttools.types import K
 
 
@@ -222,7 +221,8 @@ def nested_expand(items: Iterable[Collection]) -> Mapping:
 
         return acc
 
-    return reduce(lambda acc, item: nested_expand_reduce_func(acc, item), items, {})
+    return reduce(lambda acc, item: nested_expand_reduce_func(acc, item), items,
+                  {})
 
 
 def is_plain_iterable(data):
@@ -256,4 +256,5 @@ def stop_range_0(vs: Collection[int]):
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

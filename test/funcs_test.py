@@ -23,8 +23,8 @@ from typing import List
 
 import unittest
 
-from dicttools.nested.functions import update, map_dict
-from dicttools.nested.signature import Signature, any_of_keys, any_key
+from dicttools.json.functions import update, map_dict
+from dicttools.json._signature import Signature, any_of_keys, any_key
 
 
 class TestFuncs(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestFuncs(unittest.TestCase):
                 1: {'a': 10, 'c': 13},
                 2: {'a': 20, 'b': {'d': 100, 'e': 101}, 'c': 23},
                 3: {'a': 30, 'b': 31, 'c': {'d': 300}}}
-        update(Signature(any_key[:1], any_of_keys('b', 'c'), 'd'), data,
+        update(Signature(any_key[:1], any_of_keys[{'b', 'c'}, 1], 'd'), data,
                lambda _path, v: f"f({v})")
         self.assertEqual(data, {0: {'a': 1, 'b': 2},
                                  1: {'a': 10, 'c': 13},
@@ -72,3 +72,7 @@ class TestFuncs(unittest.TestCase):
         """
 
         print(map_dict({'a': {'b': 1}, 'b': {'c': 2}}, f, only_terminal=False))
+
+
+if __name__ == "__main__":
+    unittest.main()
