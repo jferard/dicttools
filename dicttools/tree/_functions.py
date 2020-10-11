@@ -18,11 +18,10 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Mapping, Tuple, Hashable, Any, List, Iterable, Sequence
-from dataclasses import dataclass
 from collections import Counter
+from dataclasses import dataclass
+from typing import Mapping, Tuple, Hashable, Any, List, Iterable
 
-from dicttools.json import idx
 from dicttools.tree._util import list_get
 
 
@@ -40,15 +39,15 @@ class SearchItem:
 
     def draw(self):
         if self.terminal:
-            return "-".join(self.path) + "^" + str(self.value)
+            return "-".join(map(str, self.path)) + "^" + str(self.value)
         else:
-            return "-".join(self.path + (self.value,))
+            return "-".join(map(str, self.path + (self.value,)))
 
 
 def tree_bfs(d):
     """
-    >>> [se.draw() for se in tree_bfs({'a':{'b': 1, 'c':{'d':2}},
-    ...     'e': 3, 'f':{'g':4, 'h':{'i': 5}}})]
+    >>> [se.draw() for se in tree_bfs({'a':{'b': {1: None}, 'c':{'d': {2: None}}},
+    ...     'e': {3: None}, 'f':{'g': {4: None}, 'h':{'i': {5: None}}}})]
     ['a', 'e', 'f', 'a-b', 'a-c', 'e^3', 'f-g', 'f-h', 'a-b^1', 'a-c-d', 'f-g^4', 'f-h-i', 'a-c-d^2', 'f-h-i^5']
     """
     for k in d.keys():
@@ -59,29 +58,37 @@ def tree_bfs(d):
         se = stack.pop(0)
         if se.is_mapping():
             for k, v in se.value.items():
-                yield SearchItem(se.path, k, False)
-                stack.append(
-                    SearchItem(se.path + (k,), v, not isinstance(v, Mapping)))
+                if v is None:
+                    yield SearchItem(se.path, k, True)
+                else:
+                    yield SearchItem(se.path, k, False)
+                    stack.append(
+                        SearchItem(se.path + (k,), v, not isinstance(v, Mapping)))
         else:
             yield se
 
 
 def tree_dfs(d):
     """
-    >>> [se.draw() for se in tree_dfs({'a':{'b': 1, 'c':{'d':2}}, 'e': 3, 'f':{'g':4, 'h':{'i': 5}}})]
+    >>> [se.draw() for se in tree_dfs({'a':{'b': {1: None},
+    ... 'c':{'d': {2: None}}}, 'e': {3: None}, 'f':{'g': {4: None},
+    ... 'h':{'i': {5: None}}}})]
     ['a', 'a-b', 'a-b^1', 'a-c', 'a-c-d', 'a-c-d^2', 'e', 'e^3', 'f', 'f-g', 'f-g^4', 'f-h', 'f-h-i', 'f-h-i^5']
     """
-    for k, v in d.items():
-        yield SearchItem(tuple(), k, False)
-        stack = [SearchItem((k,), v, not isinstance(v, Mapping))]
+    for k0, v0 in d.items():
+        yield SearchItem(tuple(), k0, False)
+        stack = [SearchItem((k0,), v0, not isinstance(v0, Mapping))]
         while stack:
             se = stack.pop()
             if se.is_mapping():
                 temp = []
                 for k, v in se.value.items():
-                    temp.append(SearchItem(se.path, k, False))
-                    temp.append(SearchItem(se.path + (k,), v,
-                                           not isinstance(v, Mapping)))
+                    if v is None:
+                        temp.append(SearchItem(se.path, k, True))
+                    else:
+                        temp.append(SearchItem(se.path, k, False))
+                        temp.append(SearchItem(se.path + (k,), v,
+                                               not isinstance(v, Mapping)))
                 stack.extend(reversed(temp))
             else:
                 yield se
@@ -228,6 +235,8 @@ def tree_is_perfect(d) -> bool:
 
 
 def tree_diameter(d) -> bool:
+    # first dfs from any node, e.g root to X. second dfs from X to Y.
+    # D = distance(X, Y)
     pass
 
 
