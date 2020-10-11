@@ -31,7 +31,7 @@ Good. Now try with:
 Pretty hard, isn't it? List comprehension are almost useless with nested dicts. We need a more powerful tool.
 
 
-.. |Build Status| image:: https://travis-ci.org/jferard/dicttools.svg?branch=master
+.. |Build Status| image:: https://travis-ci.com/jferard/dicttools.svg?branch=master
    :target: https://travis-ci.org/jferard/dicttools
 .. |Code Coverage| image:: https://img.shields.io/codecov/c/github/jferard/dicttools/master.svg
    :target: https://codecov.io/github/jferard/dicttools?branch=master
