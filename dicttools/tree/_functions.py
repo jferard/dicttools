@@ -18,9 +18,12 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Mapping, Tuple, Hashable, Any, List, Iterable
+from typing import Mapping, Tuple, Hashable, Any, List, Iterable, Sequence
 from dataclasses import dataclass
 from collections import Counter
+
+from dicttools.json import idx
+from dicttools.tree._util import list_get
 
 
 @dataclass
@@ -141,6 +144,66 @@ def tree_width(d: Mapping) -> int:
     return max(c.values())
 
 
+def tree_from_binary(binary: List) -> Mapping:
+    """
+    >>> binary = [None, 'D', 'A', 'F', 'E', 'B', 'R', 'T', 'G', 'Q', None, None, 'V', None, 'J', 'L']
+    >>> tree_from_binary(binary)
+    {'A': {'E': {'G': None, 'Q': None}, 'B': None}, 'F': {'R': {'V': None}, 'T': {'J': None, 'L': None}}}
+
+    :param binary:
+    :return:
+    """
+    stack = []
+    positions = [1]
+    while positions:
+        pos = positions.pop()
+        node = list_get(binary, pos)
+        if node is not None:
+            children_pos = pos * 2
+            stack.append(
+                (node,
+                 list_get(binary, children_pos),
+                 list_get(binary, children_pos + 1)
+                 )
+            )
+            positions.append(children_pos)
+            positions.append(children_pos + 1)
+
+    new = []
+    while stack:
+        node, left, right = stack.pop()
+        if left is None:
+            if right is None:
+                new.append(None)
+            else:
+                new.append({right: new.pop()})
+        elif right is None:
+            new.append({left: new.pop()})
+        else:
+            right_value = new.pop()
+            left_value = new.pop()
+            new.append({left: left_value, right: right_value})
+
+    return new.pop()
+
+
+def tree_to_binary(d) -> List:
+    pass
+
+
+def tree_is_perfect(d) -> bool:
+    pass
+
+
+def tree_diameter(d) -> bool:
+    pass
+
+
+def tree_length(d) -> bool:
+    pass
+
+
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

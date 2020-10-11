@@ -1,4 +1,3 @@
-# coding: utf-8
 #  DictTools. Provides functions and operations to handle, explore,
 #     modify Python nested dicts, especially JSON-like data
 #     Copyright (C) 2020 J. Férard <https://github.com/jferard>
@@ -17,13 +16,8 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""
-In Python, `dict` objects are a very convenient way to represent trees having
-unordered nodes.
+from typing import List
 
-This module provides some basic function to manipulate those dict-as-trees.
 
-For a more complete tree data structure, you should use a Node class or,
-if the tree is a binary tree, a list.
-"""
-
+def list_get(a_list: List, i: int):
+    return a_list[i] if i < len(a_list) else None
