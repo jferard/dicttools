@@ -232,7 +232,33 @@ def tree_diameter(d) -> bool:
 
 
 def tree_length(d) -> bool:
-    pass
+    """
+    >>> d = {'A': None}
+    >>> tree_length(d)
+    0
+    >>> d = {'B': {'A': None}}
+    >>> tree_length(d)
+    1
+    >>> d = {'I': {'B': {'A': None, 'R': None}}}
+    >>> tree_length(d)
+    5
+    >>> d = {'I': {'B': {'A': None, 'R': None}, 'O':  {'M': {'R': None, 'E': None, 'T': None, 'F': None}}, 'N': None}}
+    >>> tree_length(d)
+    21
+
+    :param d:
+    :return:
+    """
+    def tree_length_aux(d, level):
+        if d is None:
+            return level - 1
+        else:
+            tl = level - 1
+            for k, v in d.items():
+                tl += tree_length_aux(v, level + 1)
+            return tl
+
+    return tree_length_aux(d, 0) + 1
 
 
 if __name__ == "__main__":
