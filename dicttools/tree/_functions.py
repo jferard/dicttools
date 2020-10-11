@@ -144,17 +144,18 @@ def tree_width(d: Mapping) -> int:
     return max(c.values())
 
 
-def tree_from_binary(binary: List) -> Mapping:
+def tree_from_binary(binary: List, start=1) -> Mapping:
     """
     >>> binary = [None, 'D', 'A', 'F', 'E', 'B', 'R', 'T', 'G', 'Q', None, None, 'V', None, 'J', 'L']
     >>> tree_from_binary(binary)
-    {'A': {'E': {'G': None, 'Q': None}, 'B': None}, 'F': {'R': {'V': None}, 'T': {'J': None, 'L': None}}}
+    {'D': {'A': {'E': {'G': None, 'Q': None}, 'B': None}, 'F': {'R': {'V': None}, 'T': {'J': None, 'L': None}}}}
 
     :param binary:
+    :param start:
     :return:
     """
     stack = []
-    positions = [1]
+    positions = [start]
     while positions:
         pos = positions.pop()
         node = list_get(binary, pos)
@@ -184,11 +185,42 @@ def tree_from_binary(binary: List) -> Mapping:
             left_value = new.pop()
             new.append({left: left_value, right: right_value})
 
-    return new.pop()
+    return {node: new.pop()}
 
 
-def tree_to_binary(d) -> List:
-    pass
+def tree_to_binary(d, start=1) -> List:
+    """
+    >>> tree = {'D': {'A': {'E': {'G': None, 'Q': None}, 'B': None}, 'F': {'R': {'V': None}, 'T': {'J': None, 'L': None}}}}
+    >>> tree_to_binary(tree)
+    [None, 'D', 'A', 'F', 'E', 'B', 'R', 'T', 'G', 'Q', None, None, 'V', None, 'J', 'L']
+
+    :param d:
+    :param start:
+    :return:
+    """
+    if len(d) != 1:
+        raise ValueError()
+    k, v = next(iter(d.items()))
+    stack = [(start, v)]
+    binary_positions = [(start, k)]
+    binary_len = start
+    while stack:
+        pos, d = stack.pop()
+        if d is not None:
+            children_pos = 2 * pos
+            if children_pos + len(d.items()) > binary_len:
+                binary_len = children_pos + len(d.items())
+
+            for j, (k, v) in enumerate(d.items()):
+                binary_positions.append((children_pos + j, k))
+                if v is not None:
+                    stack.append((children_pos + j, v))
+
+    binary = [None] * binary_len
+    for pos, v in binary_positions:
+        binary[pos] = v
+
+    return binary
 
 
 def tree_is_perfect(d) -> bool:
