@@ -176,6 +176,14 @@ def nested_items(d_or_iter: Union[Mapping[K, Any], Iterator[Tuple[Tuple, Any]]]
 
 
 def nested_bfs_terminal_items(d: Mapping):
+    """
+    >>> [item.draw() for item in nested_bfs_terminal_items(
+    ...     {'a': {'b': 1, 'c': 2}, 'd': [{'e': 1}, 'f']})]
+    ['a-b^1', 'a-c^2', 'd-idx(1)^f', 'd-idx(0)-e^1']
+
+    :param d:
+    :return:
+    """
     stack = [json_item(tuple(), d)]
     while stack:
         item = stack.pop()
@@ -187,6 +195,14 @@ def nested_bfs_terminal_items(d: Mapping):
 
 
 def nested_bfs_all_items(d: Mapping):
+    """
+    >>> [item.draw() for item in nested_bfs_all_items(
+    ...     {'a': {'b': 1, 'c': 2}, 'd': [{'e': 1}, 'f']})]
+    ['a', 'd', 'a-b', 'a-c', 'd-idx(0)', 'd-idx(1)', 'a-b^1', 'a-c^2', 'd-idx(0)-e', 'd-idx(1)^f', 'd-idx(0)-e^1']
+
+    :param d:
+    :return:
+    """
     stack = [json_item(tuple(), d)]
     while stack:
         item = stack.pop()
@@ -199,17 +215,39 @@ def nested_bfs_all_items(d: Mapping):
 
 
 def nested_dfs_terminal_items(d: Mapping):
-    stack = [json_item(tuple(), d)]
-    while stack:
-        item = stack.pop()
-        try:
-            for k, v in item.items():
-                stack.append(json_item(item.path + (k,), v))
-        except TypeError:
-            yield item
+    """
+    >>> [item.draw() for item in nested_dfs_terminal_items(
+    ...     {'a': {'b': 1, 'c': 2}, 'd': [{'e': 1}, 'f']})]
+    ['a-b^1', 'a-c^2', 'd-idx(0)-e^1', 'd-idx(1)^f']
+
+    :param d:
+    :return:
+    """
+    for k0, v0 in d.items():
+        stack = [json_item((k0,), v0)]
+        while stack:
+            se = stack.pop()
+            try:
+                temp = []
+                for k, v in se.items():
+                    if v is None:
+                        temp.append(TerminalJsonItem(se.path, k))
+                    else:
+                        temp.append(json_item(se.path + (k,), v))
+                stack.extend(reversed(temp))
+            except TypeError:
+                yield se
 
 
 def nested_dfs_all_items(d: Mapping):
+    """
+    >>> [item.draw() for item in nested_dfs_all_items(
+    ...     {'a': {'b': 1, 'c': 2}, 'd': [{'e': 1}, 'f']})]
+    ['a', 'a-b', 'a-b^1', 'a-c', 'a-c^2', 'd', 'd-idx(0)', 'd-idx(0)-e', 'd-idx(0)-e^1', 'd-idx(1)', 'd-idx(1)^f']
+
+    :param d:
+    :return:
+    """
     for k0, v0 in d.items():
         yield NonTerminalJsonItem(tuple(), k0)
         stack = [json_item((k0,), v0)]
@@ -357,5 +395,3 @@ if __name__ == "__main__":
     import doctest
 
     doctest.testmod()
-
-
