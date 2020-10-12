@@ -17,6 +17,7 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import sys
 from typing import Mapping, Optional, Callable, List, Union, Iterable
 
 from dicttools.types import K, HV, F, V
@@ -126,16 +127,22 @@ def refs_from_tree(d):
     pass
 
 
-def dfs(d):
-    pass
-
-
-def bfs(d):
-    pass
-
-
 def to_data_class():
     pass
+
+
+def dict_print(d: Mapping, stream=sys.stdout) -> str:
+    """
+        >>> dict_print({'A': {'B': {'D': {'G': None, 'H': None},
+        ... 'E': {'I': {'J': None}}}, 'C': {'F': None}}})
+
+        {'A': {'B': {'D': {'G': None,
+                           'H': None},
+                     'E': {'I': {'J': None}}},
+               'C': {'F': None}}}
+    """
+    from pprint import pprint
+    pprint(d, stream=stream, width=1)
 
 
 if __name__ == "__main__":

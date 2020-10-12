@@ -109,6 +109,9 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
         yield from nested_filter_func(d)
 
 
+def nested_map():
+    pass
+
 def update(sig, data, f):
     """
     >>> from dicttools.json import any_key
@@ -138,6 +141,8 @@ def update(sig, data, f):
 
 def find(signature, data):
     """
+    DEPRECATED: see filter
+
     >>> from dicttools.json import any_key
     >>> list(find(Signature(any_key[:]), {"a": {"b": 1}}))
     [(['a', 'b'], 1)]

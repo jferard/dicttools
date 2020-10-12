@@ -17,8 +17,7 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass
 from typing import Mapping, Tuple, Hashable, Any, List, Iterable
 
@@ -235,9 +234,43 @@ def tree_is_perfect(d) -> bool:
 
 
 def tree_diameter(d) -> bool:
-    # first dfs from any node, e.g root to X. second dfs from X to Y.
-    # D = distance(X, Y)
-    pass
+    """
+    The longest path between two nodes of the tree (passing from child to
+    parent is allowed).
+
+    For this dict:
+
+        >>> d = {'A': {'B': {'D': {'G': None, 'H': None},
+        ... 'E': {'I': {'J': None}}}, 'C': {'F': None}}}
+
+    The longest path is: J-I-E-B-D-G:
+
+        >>> tree_diameter(d)
+        5
+
+    :param d:
+    :return:
+    """
+    if d is None:
+        return 0
+    else:
+        depth1 = 0
+        depth2 = 0
+        diameter = 0
+        for k, v in d.items():
+            depth_v = tree_depth(v)
+            diameter_v = tree_diameter(v)
+            if depth_v > depth1:
+                depth1 = depth_v
+            elif depth_v > depth2:
+                depth2 = depth_v
+            if diameter_v > diameter:
+                diameter = diameter_v
+        root_diameter = depth1 + 1 + depth2
+        if root_diameter > diameter:
+            diameter = root_diameter
+
+        return diameter
 
 
 def tree_length(d) -> bool:
