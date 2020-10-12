@@ -23,7 +23,7 @@ from typing import List
 
 import unittest
 
-from dicttools.json.functions import update, map_dict
+from dicttools.json.functions import update, nested_map
 from dicttools.json._signature import Signature, any_of_keys, any_key
 
 
@@ -71,7 +71,7 @@ class TestFuncs(unittest.TestCase):
         """semantic from set operation: a dict is viewed as a set of tuples `(path, terminal value)`.
         """
 
-        print(map_dict({'a': {'b': 1}, 'b': {'c': 2}}, f, only_terminal=False))
+        # print(nested_map({'a': {'b': 1}, 'b': {'c': 2}}, f, only_terminal=False))
 
 
 if __name__ == "__main__":

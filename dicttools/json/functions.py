@@ -17,11 +17,12 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import MISSING, is_dataclass, fields
 from typing import Mapping, Sequence, Callable, Iterator, Union
 
+from dicttools._util import TerminalItem, is_plain_iterable, NonTerminalItem, \
+    json_item
 from dicttools.json._signature import Signature
-from dicttools.json._util import is_plain_iterable, idx, nested_items
+from dicttools.json._util import idx, nested_items
 from dicttools.types import Nested, NestedItem, Path
 
 
@@ -29,24 +30,32 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
     """
     Filter a nested dict.
 
-        filter(
+        filter(function or signature, d)
 
 
-    >>> d = {'a':{'b': 1}, 'c':{'d':{'e':{'f': 2}}}}
-    >>> func = lambda path, final: None if len(path) < 2 else True if len(path) < 3 else False
-    >>> list(nested_filter(func, d ,shortcut=True))
-    [(('a', 'b'), 1), (('c', 'd'), {'e': {'f': 2}})]
-    >>> func = lambda path, terminal: None if len(path) < 2 else True if len(path) < 3 and terminal else False
-    >>> list(nested_filter(func, d, shortcut=True))
-    [(('a', 'b'), 1)]
-    >>> func = lambda path: len(path) == 2
-    >>> list(nested_filter(func, d))
-    [(('a', 'b'), 1)]
+    >>> d = {'a':{'b': 1}, 'c':{'d':{'e':{'f': 2}, 'g': 3}}}
+    >>> [item.draw() for item in nested_filter(lambda _: True, d)]
+    ['a-b^1', 'c-d-g^3', 'c-d-e-f^2']
+    >>> map_func = lambda item: len(item.path) == 2
+    >>> [item.draw() for item in nested_filter(map_func, d)]
+    ['a-b^1']
+    >>> def map_func(item):
+    ...     if len(item.path) < 2: return None
+    ...     else: return len(item.path) == 2
+    >>> [item.draw() for item in nested_filter(map_func, d, shortcut=True)]
+    ['a-b^1', "c-d-{'e': {'f': 2}, 'g': 3}"]
+    >>> def map_func(item):
+    ...     if len(item.path) < 2: return None
+    ...     else: return len(item.path) == 2 and item.terminal
+    >>> [item.draw() for item in nested_filter(map_func, d, shortcut=True)]
+    ['a-b^1']
     >>> from dicttools.json import any_key, any_of_keys
-    >>> list(nested_filter(Signature(any_of_keys[{'a', 'c'}, 1]), d))
-    [(('a',), {'b': 1}), (('c',), {'d': {'e': {'f': 2}}})]
-    >>> list(nested_filter(Signature(any_of_keys[{'a', 'c'}, 1], 'd'), d))
-    [(('c', 'd'), {'e': {'f': 2}})]
+    >>> [item.draw() for item in
+    ...     nested_filter(Signature(any_of_keys[{'a', 'c'}, 1]), d)]
+    ["a-{'b': 1}", "c-{'d': {'e': {'f': 2}, 'g': 3}}"]
+    >>> [item.draw() for item in
+    ...     nested_filter(Signature(any_of_keys[{'a', 'c'}, 1], 'd'), d)]
+    ["c-d-{'e': {'f': 2}, 'g': 3}"]
 
     :param d: a nested dict
     :param func_or_signature: a function that takes a path and returns True
@@ -63,7 +72,7 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
                 k = idx(v)
                 yield from nested_filter_signature_aux(k, v, signature, cur_path)
         else:
-            yield cur_path, d
+            yield TerminalItem(cur_path, d)
 
     def nested_filter_signature_aux(k, v, signature, cur_path):
         try:
@@ -75,31 +84,34 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
             if s is not None:
                 yield from nested_filter_signature(v, s, path)
             else:
-                yield path, v
+                yield json_item(path, v)
 
     def nested_filter_shortcut_func(d: Nested, cur_path: Path) -> Iterator[NestedItem]:
         if isinstance(d, Mapping):
-            result = func_or_signature(cur_path, False)
+            item = NonTerminalItem(cur_path, d)
+            result = func_or_signature(item)
             if result is True:
-                yield cur_path, d
+                yield item
             elif result is None:
                 for k, v in d.items():
                     next_path = cur_path + (k,)
                     yield from nested_filter_shortcut_func(v, next_path)
         elif is_plain_iterable(d):
-            result = func_or_signature(cur_path, False)
+            item = NonTerminalItem(cur_path, d)
+            result = func_or_signature(item)
             if result is True:
-                yield cur_path, d
+                yield item
             elif result is None:
                 for i, v in enumerate(d):
                     next_path = cur_path + (idx(i),)
                     yield from nested_filter_shortcut_func(v, next_path)
         else:
-            if func_or_signature(cur_path, True) is True:
-                yield cur_path, d
+            item = TerminalItem(cur_path, d)
+            if func_or_signature(item) is True:
+                yield item
 
     def nested_filter_func(d: Nested) -> Iterator[NestedItem]:
-        return filter(lambda path_v: func_or_signature(path_v[0]), nested_items(d))
+        return filter(func_or_signature, nested_items(d))
 
     if isinstance(func_or_signature, Signature):
         yield from nested_filter_signature(d, func_or_signature, tuple())
@@ -109,11 +121,70 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
         yield from nested_filter_func(d)
 
 
-def nested_map():
-    pass
+def nested_map_values(d: Mapping, func):
+    """
+    Map the current dict.
+
+    :param d:
+    :param map_func:
+    :param default:
+    :param only_terminal:
+    :return:
+    """
+    def map_aux(d, path):
+        if isinstance(d, Mapping):
+            for k, v in d.items():
+                pass
+        elif is_plain_iterable(d):
+            pass
+        else:
+            yield TerminalItem(path, func(path, d, True))
+
+    return map_aux(d, [])
+
+
+def nested_map(d: Mapping, func_or_signature, map_func, default=None,
+                      only_terminal=True):
+    def map_to_seq(d, default=None):
+        m = max(d)
+        return [d.get(i, default) for i in range(m)]
+
+    def map_dict_only_terminal(parent, data, path):
+        if isinstance(data, Mapping):
+            return parent, dict(
+                map_dict_only_terminal(k, v, path + [k]) for k, v in
+                data.items())
+        elif is_plain_iterable(data):
+            return parent, map_to_seq(dict(
+                map_dict_only_terminal(k, v, path + [i]) for i, v in
+                enumerate(data)))
+        else:
+            return map_func(parent, data, path)
+
+    def map_once(item, v, path):
+        new_path = path + [item]
+        _, data = map_dict_all(item, v, new_path)
+        return map_func(item, data, new_path)
+
+    def map_dict_all(parent, data, path):
+        if isinstance(data, Mapping):
+            return parent, dict(map_once(k, v, path) for k, v in data.items())
+        elif is_plain_iterable(data):
+            return parent, map_to_seq(
+                dict(map_once(i, v, path) for i, v in enumerate(data)))
+        else:
+            return parent, data
+
+    if only_terminal:
+        return map_dict_only_terminal(None, d, [])[1]
+    else:
+        return map_dict_all(None, d, [])[1]
+
 
 def update(sig, data, f):
     """
+    DEPRECATED: see nested_map
+
     >>> from dicttools.json import any_key
     >>> update(Signature(any_key[:1]), {"a": {"b": 1}}, lambda _path, v: list(v))
     {'a': ['b']}
@@ -197,88 +268,6 @@ def find(signature, data):
                     yield new_path, new_data
 
     yield from find_aux(signature, data, [])
-
-
-def dataclass_from_dict(t, data, type_check=True):
-    def process_field_value(field, data):
-        value = get_field_value(field, data)
-        try:
-            return from_typing_collection(field.type, value)
-        except AttributeError:
-            return from_dict_aux(field.type, value)
-
-    def get_field_value(field, data):
-        try:
-            return data[field.name]
-        except KeyError:
-            if field.default != MISSING:
-                return field.default
-            elif field.default_factory != MISSING:
-                return field.default_factory()
-            else:
-                raise
-
-    def from_typing_collection(t, data):
-        origin, args = t.__origin__, t.__args__
-        if issubclass(origin, Mapping):
-            return {k: from_dict_aux(args[1], v) for k, v in data.items()}
-        elif issubclass(origin, Sequence):
-            return [from_dict_aux(args[0], x) for x in data]
-        else:
-            return data
-
-    def from_dict_aux(t, data):
-        assert isinstance(t, type), f"{t} should be a type"
-        if is_dataclass(t):
-            kwargs = {field.name: process_field_value(field, data)
-                      for field in fields(t)}
-            return t(**kwargs)
-        else:
-            if isinstance(data, t) or not type_check:
-                return data
-            else:
-                raise TypeError(f"{repr(data)} is not an instance of {t}")
-
-    return from_dict_aux(t, data)
-
-
-def map_dict(d, func, default=None, only_terminal=True):
-    def map_to_seq(d, default=None):
-        m = max(d)
-        return [d.get(i, default) for i in range(m)]
-
-    def map_dict_only_terminal(parent, data, path):
-        if isinstance(data, Mapping):
-            return parent, dict(
-                map_dict_only_terminal(k, v, path + [k]) for k, v in
-                data.items())
-        elif isinstance(data, Sequence) and not isinstance(data, str):
-            return parent, map_to_seq(dict(
-                map_dict_only_terminal(k, v, path + [i]) for i, v in
-                enumerate(data)))
-        else:
-            return func(parent, data, path)
-
-    def map_once(item, v, path):
-        new_path = path + [item]
-        _, data = map_dict_all(item, v, new_path)
-        return func(item, data, new_path)
-
-    def map_dict_all(parent, data, path):
-        if isinstance(data, Mapping):
-            return parent, dict(map_once(k, v, path) for k, v in data.items())
-        elif isinstance(data, Sequence) and not isinstance(data, str):
-            return parent, map_to_seq(
-                dict(map_once(i, v, path) for i, v in enumerate(data)))
-        else:
-            return parent, data
-
-    if only_terminal:
-        return map_dict_only_terminal(None, d, [])[1]
-    else:
-        return map_dict_all(None, d, [])[1]
-
-
 
 
 if __name__ == "__main__":

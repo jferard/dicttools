@@ -145,6 +145,48 @@ def dict_print(d: Mapping, stream=sys.stdout) -> str:
     pprint(d, stream=stream, width=1)
 
 
+def dataclass_from_dict(t, data, type_check=True):
+    def process_field_value(field, data):
+        value = get_field_value(field, data)
+        try:
+            return from_typing_collection(field.type, value)
+        except AttributeError:
+            return from_dict_aux(field.type, value)
+
+    def get_field_value(field, data):
+        try:
+            return data[field.name]
+        except KeyError:
+            if field.default != MISSING:
+                return field.default
+            elif field.default_factory != MISSING:
+                return field.default_factory()
+            else:
+                raise
+
+    def from_typing_collection(t, data):
+        origin, args = t.__origin__, t.__args__
+        if issubclass(origin, Mapping):
+            return {k: from_dict_aux(args[1], v) for k, v in data.items()}
+        elif issubclass(origin, Sequence):
+            return [from_dict_aux(args[0], x) for x in data]
+        else:
+            return data
+
+    def from_dict_aux(t, data):
+        assert isinstance(t, type), f"{t} should be a type"
+        if is_dataclass(t):
+            kwargs = {field.name: process_field_value(field, data)
+                      for field in fields(t)}
+            return t(**kwargs)
+        else:
+            if isinstance(data, t) or not type_check:
+                return data
+            else:
+                raise TypeError(f"{repr(data)} is not an instance of {t}")
+
+    return from_dict_aux(t, data)
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()

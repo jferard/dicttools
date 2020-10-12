@@ -41,7 +41,7 @@ two terminal values `1` and `2`.
 """
 from typing import Mapping
 
-from dicttools.json._util import is_plain_iterable
+from dicttools._util import is_plain_iterable
 
 
 def isdisjoint(d1, d2, func=lambda v1, v2: v1 == v2):

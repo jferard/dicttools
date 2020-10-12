@@ -22,6 +22,7 @@ from functools import reduce
 from typing import (Mapping, Iterable, Collection, Iterator, MutableMapping,
                     Callable, Union, Any, Tuple)
 
+from dicttools._util import (is_plain_iterable, json_item)
 from dicttools.types import K
 
 
@@ -153,28 +154,34 @@ def to_json(d: Mapping,
             "Parameter accept should be idx|int|str, not {}".format(accept))
 
 
-def nested_items(d: Mapping[K, Any]) -> Iterator[Tuple[Tuple, Any]]:
+def nested_items(d_or_iter: Union[Mapping[K, Any], Iterator[Tuple[Tuple, Any]]]
+                 ) -> Iterator[Tuple[Tuple, Any]]:
     """
     Create a generator over (path, value).
 
-    >>> list(nested_items({'b': 1, 'c': 2}))
-    [(('b',), 1), (('c',), 2)]
-    >>> list(nested_items({'a': {'b': 1, 'c': 2}, 'd': [{'e': 1}, 'f']}))
-    [(('a', 'b'), 1), (('a', 'c'), 2), (('d', idx(0), 'e'), 1), (('d', idx(1)), 'f')]
+    >>> [item.draw() for item in nested_items({'b': 1, 'c': 2})]
+    ['b^1', 'c^2']
+    >>> [item.draw() for item in nested_items(
+    ...     {'a': {'b': 1, 'c': 2}, 'd': [{'e': 1}, 'f']})]
+    ['a-b^1', 'a-c^2', 'd-idx(1)^f', 'd-idx(0)-e^1']
 
     :param d: a nested or JSON mapping
     :return: an iterator over (path, value), where path is the full path
     """
-    if isinstance(d, Mapping):
-        for k, v in d.items():
-            for path, value in nested_items(v):
-                yield (k,) + path, value
-    elif is_plain_iterable(d):
-        for i, v in enumerate(d):
-            for path, value in nested_items(v):
-                yield (idx(i),) + path, value
-    else:
-        yield tuple(), d
+    if isinstance(d_or_iter, Iterator):
+        return d_or_iter
+
+    stack = [json_item(tuple(), d_or_iter)]
+    while stack:
+        item = stack.pop()
+        if item.is_mapping():
+            for k, v in item.items():
+                stack.insert(0, json_item(item.path + (k,), v))
+        elif item.is_plain_iterable():
+            for i, v in item.enumerate():
+                stack.insert(0, json_item(item.path + (idx(i),), v))
+        else:
+            yield item
 
 
 def nested_flatten(d: Mapping[K, Any]) -> Mapping[K, Any]:
@@ -182,12 +189,12 @@ def nested_flatten(d: Mapping[K, Any]) -> Mapping[K, Any]:
     Flatten a nested dict.
 
     >>> nested_flatten({'a': {'b': 1, 'c': 2}, 'd': [{'e': 1}, 'f']})
-    {('a', 'b'): 1, ('a', 'c'): 2, ('d', idx(0), 'e'): 1, ('d', idx(1)): 'f'}
+    {('a', 'b'): 1, ('a', 'c'): 2, ('d', idx(1)): 'f', ('d', idx(0), 'e'): 1}
 
     :param d: a nested or JSON mapping
     :return: a one level dictionary
     """
-    return dict(nested_items(d))
+    return dict(map(tuple, nested_items(d)))
 
 
 def nested_expand(items: Iterable[Collection]) -> Mapping:
@@ -223,14 +230,6 @@ def nested_expand(items: Iterable[Collection]) -> Mapping:
 
     return reduce(lambda acc, item: nested_expand_reduce_func(acc, item), items,
                   {})
-
-
-def is_plain_iterable(data):
-    """
-    :param data: the data
-    :return: True if the data is a sequence, but not a string or a byte sequence
-    """
-    return isinstance(data, Iterable) and not isinstance(data, (str, bytes))
 
 
 def stop_range_0(vs: Collection[int]):

@@ -17,30 +17,12 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from collections import Counter, deque
-from dataclasses import dataclass
-from typing import Mapping, Tuple, Hashable, Any, List, Iterable
+from collections import Counter
+from typing import Mapping, Tuple, List, Iterable
 
+from dicttools._util import NestedItem, TerminalItem, NonTerminalItem, \
+    tree_item
 from dicttools.tree._util import list_get
-
-
-@dataclass
-class SearchItem:
-    """
-    The result of a search in a tree
-    """
-    path: Tuple[Hashable]
-    value: Any
-    terminal: bool
-
-    def is_mapping(self):
-        return isinstance(self.value, Mapping)
-
-    def draw(self):
-        if self.terminal:
-            return "-".join(map(str, self.path)) + "^" + str(self.value)
-        else:
-            return "-".join(map(str, self.path + (self.value,)))
 
 
 def tree_bfs(d):
@@ -50,19 +32,17 @@ def tree_bfs(d):
     ['a', 'e', 'f', 'a-b', 'a-c', 'e^3', 'f-g', 'f-h', 'a-b^1', 'a-c-d', 'f-g^4', 'f-h-i', 'a-c-d^2', 'f-h-i^5']
     """
     for k in d.keys():
-        yield SearchItem(tuple(), k, False)
-    stack = [SearchItem((k,), v, not isinstance(v, Mapping)) for k, v in
-             d.items()]
+        yield NonTerminalItem(tuple(), k)
+        stack = [tree_item((k,), v) for k, v in d.items()]
     while stack:
         se = stack.pop(0)
         if se.is_mapping():
             for k, v in se.value.items():
                 if v is None:
-                    yield SearchItem(se.path, k, True)
+                    yield TerminalItem(se.path, k)
                 else:
-                    yield SearchItem(se.path, k, False)
-                    stack.append(
-                        SearchItem(se.path + (k,), v, not isinstance(v, Mapping)))
+                    yield NonTerminalItem(se.path, k)
+                    stack.append(tree_item(se.path + (k,), v))
         else:
             yield se
 
@@ -75,25 +55,24 @@ def tree_dfs(d):
     ['a', 'a-b', 'a-b^1', 'a-c', 'a-c-d', 'a-c-d^2', 'e', 'e^3', 'f', 'f-g', 'f-g^4', 'f-h', 'f-h-i', 'f-h-i^5']
     """
     for k0, v0 in d.items():
-        yield SearchItem(tuple(), k0, False)
-        stack = [SearchItem((k0,), v0, not isinstance(v0, Mapping))]
+        yield NonTerminalItem(tuple(), k0)
+        stack = [tree_item((k0,), v0)]
         while stack:
             se = stack.pop()
             if se.is_mapping():
                 temp = []
                 for k, v in se.value.items():
                     if v is None:
-                        temp.append(SearchItem(se.path, k, True))
+                        temp.append(TerminalItem(se.path, k))
                     else:
-                        temp.append(SearchItem(se.path, k, False))
-                        temp.append(SearchItem(se.path + (k,), v,
-                                               not isinstance(v, Mapping)))
+                        temp.append(NonTerminalItem(se.path, k))
+                        temp.append(tree_item(se.path + (k,), v))
                 stack.extend(reversed(temp))
             else:
                 yield se
 
 
-def to_nested(ses: Iterable[SearchItem]):
+def to_nested(ses: Iterable[NestedItem]):
     """
     >>> d = {'a':{'b': 1, 'c':{'d':2}}, 'e': 3, 'f':{'g':4, 'h':{'i': 5}}}
     >>> to_nested(tree_dfs(d)) == d
@@ -291,6 +270,7 @@ def tree_length(d) -> bool:
     :param d:
     :return:
     """
+
     def tree_length_aux(d, level):
         if d is None:
             return level - 1
@@ -301,6 +281,29 @@ def tree_length(d) -> bool:
             return tl
 
     return tree_length_aux(d, 0) + 1
+
+
+def tree_split(d, func_or_signature, maxsplits=1) -> Tuple[Mapping, ...]:
+    """
+    Split the dict at the current sig.
+
+    :param d:
+    :param func_or_signature:
+    :return:
+    """
+    pass
+
+
+def tree_merge(d1, func_or_signature, d2) -> Mapping:
+    """
+    Merge `d1` and `d2` at level.
+
+    :param d1:
+    :param func_or_signature:
+    :param d2:
+    :return:
+    """
+    pass
 
 
 if __name__ == "__main__":
