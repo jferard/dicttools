@@ -19,14 +19,15 @@
 
 from typing import Mapping, Sequence, Callable, Iterator, Union
 
-from dicttools._util import TerminalItem, is_plain_iterable, NonTerminalItem, \
-    json_item
+from dicttools._util import (is_plain_iterable)
+from dicttools.json import (json_item, TerminalJsonItem, NonTerminalJsonItem)
 from dicttools.json._signature import Signature
 from dicttools.json._util import idx, nested_items
 from dicttools.types import Nested, NestedItem, Path
 
 
-def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shortcut=False) -> Iterator[NestedItem]:
+def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested,
+                  shortcut=False) -> Iterator[NestedItem]:
     """
     Filter a nested dict.
 
@@ -51,10 +52,10 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
     ['a-b^1']
     >>> from dicttools.json import any_key, any_of_keys
     >>> [item.draw() for item in
-    ...     nested_filter(Signature(any_of_keys[{'a', 'c'}, 1]), d)]
+    ...     nested_filter(Signature(any_of_keys('a', 'c')), d)]
     ["a-{'b': 1}", "c-{'d': {'e': {'f': 2}, 'g': 3}}"]
     >>> [item.draw() for item in
-    ...     nested_filter(Signature(any_of_keys[{'a', 'c'}, 1], 'd'), d)]
+    ...     nested_filter(Signature(any_of_keys('a', 'c'), 'd'), d)]
     ["c-d-{'e': {'f': 2}, 'g': 3}"]
 
     :param d: a nested dict
@@ -62,17 +63,20 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
     if: 1. this path meets the condition; 2. a extension of this path may meet
     the condition
     """
+
     def nested_filter_signature(d: Nested, signature: Signature, cur_path
                                 ) -> Iterator[NestedItem]:
         if isinstance(d, Mapping):
             for k, v in d.items():
-                yield from nested_filter_signature_aux(k, v, signature, cur_path)
+                yield from nested_filter_signature_aux(k, v, signature,
+                                                       cur_path)
         elif is_plain_iterable(d):
             for i, v in enumerate(d):
                 k = idx(v)
-                yield from nested_filter_signature_aux(k, v, signature, cur_path)
+                yield from nested_filter_signature_aux(k, v, signature,
+                                                       cur_path)
         else:
-            yield TerminalItem(cur_path, d)
+            yield TerminalJsonItem(cur_path, d)
 
     def nested_filter_signature_aux(k, v, signature, cur_path):
         try:
@@ -86,9 +90,10 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
             else:
                 yield json_item(path, v)
 
-    def nested_filter_shortcut_func(d: Nested, cur_path: Path) -> Iterator[NestedItem]:
+    def nested_filter_shortcut_func(d: Nested, cur_path: Path) -> Iterator[
+        NestedItem]:
         if isinstance(d, Mapping):
-            item = NonTerminalItem(cur_path, d)
+            item = NonTerminalJsonItem(cur_path, d)
             result = func_or_signature(item)
             if result is True:
                 yield item
@@ -97,7 +102,7 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
                     next_path = cur_path + (k,)
                     yield from nested_filter_shortcut_func(v, next_path)
         elif is_plain_iterable(d):
-            item = NonTerminalItem(cur_path, d)
+            item = NonTerminalJsonItem(cur_path, d)
             result = func_or_signature(item)
             if result is True:
                 yield item
@@ -106,7 +111,7 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested, shor
                     next_path = cur_path + (idx(i),)
                     yield from nested_filter_shortcut_func(v, next_path)
         else:
-            item = TerminalItem(cur_path, d)
+            item = TerminalJsonItem(cur_path, d)
             if func_or_signature(item) is True:
                 yield item
 
@@ -125,26 +130,18 @@ def nested_map_values(d: Mapping, func):
     """
     Map the current dict.
 
+    >>>
+
+
     :param d:
-    :param map_func:
-    :param default:
-    :param only_terminal:
+    :param func:
     :return:
     """
-    def map_aux(d, path):
-        if isinstance(d, Mapping):
-            for k, v in d.items():
-                pass
-        elif is_plain_iterable(d):
-            pass
-        else:
-            yield TerminalItem(path, func(path, d, True))
-
-    return map_aux(d, [])
+    return map(func, nested_items(d))
 
 
 def nested_map(d: Mapping, func_or_signature, map_func, default=None,
-                      only_terminal=True):
+               only_terminal=True):
     def map_to_seq(d, default=None):
         m = max(d)
         return [d.get(i, default) for i in range(m)]
@@ -272,4 +269,5 @@ def find(signature, data):
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

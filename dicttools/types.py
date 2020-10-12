@@ -27,4 +27,4 @@ F = TypeVar('F')
 
 Nested = NewType('Nested', Mapping)
 Path = NewType('Path', Tuple[Any])
-NestedItem = NewType('NestedItem', Tuple[Path, Any])
+NestedItem = NewType('JsonItem', Tuple[Path, Any])

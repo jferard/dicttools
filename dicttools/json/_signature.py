@@ -34,7 +34,7 @@ class ItemMatches(Generic[T]):
     As in shell, `ItemMatches` represents a chunk of a signature that can accept
     multiple values.
 
-    >>> g = item_matches[lambda i: i==0 or i == '0', 1]
+    >>> g = item_matches(lambda i: i==0 or i == '0')[1]
     >>> g.take(10)
     Traceback (most recent call last):
     ...
@@ -42,9 +42,13 @@ class ItemMatches(Generic[T]):
     >>> g.take('0')
     """
 
-    def __init__(self, func: Callable[[Any], bool], occurrences: Occurrences):
+    def __init__(self, func: Callable[[Any], bool],
+                 occurrences: Occurrences = once_instance):
         self._func = func
         self._occurrences = occurrences
+
+    def __getitem__(self, item: Union[slice, int]) -> "ItemMatches":
+        return ItemMatches(self._func, occurrences(item))
 
     def take(self, k: Any) -> Optional["ItemMatches"]:
         """
@@ -92,11 +96,16 @@ class AnyItem(ItemMatches):
     >>> g.take("abc") is None
     True
     """
+
     def __init__(self, occurrences: Occurrences = once_instance):
         ItemMatches.__init__(self, lambda k: True, occurrences)
 
-    def _create(self, o: Occurrences) -> "AnyItem":
-        return AnyItem(o)
+    def __getitem__(self, item: Union[range, int]) -> "AnyItem":
+        """
+        :param item: int or slice
+        :return:
+        """
+        return AnyItem(occurrences(item))
 
     def __repr__(self):
         return f"any_item[{self._occurrences}]"
@@ -104,53 +113,64 @@ class AnyItem(ItemMatches):
 
 class ItemIn(ItemMatches):
     """
-    >>> g = any_of_items[{'a', 'b', 'c'},:2]
+    >>> g = any_of_items('a', 'b', 'c')[:2]
     >>> g.take('d')
     Traceback (most recent call last):
     ...
     KeyError: "Unexpected item 'd'"
     >>> g = g.take('a')
     >>> g
-    any_of_items[['a', 'b', 'c'], 1:1]
+    any_of_items('a', 'b', 'c')[1:1]
     >>> g.take('b') is None
     True
     """
 
-    def __init__(self, vs: Sequence[Any],
+    def __init__(self, *vs: Sequence[Any],
                  occurrences: Occurrences = once_instance):
-        ItemMatches.__init__(self, lambda k: k in vs, occurrences)
+        set_vs = set(vs)
+        ItemMatches.__init__(self, lambda k: k in set_vs, occurrences)
         self._vs = vs
 
+    def __getitem__(self, item: Union[range, int]) -> "ItemIn":
+        return ItemIn(*self._vs, occurrences=occurrences(item))
+
     def __repr__(self):
-        return f"any_of_items[{sorted(self._vs)}, {self._occurrences}]"
+        return f"any_of_items{self._vs}[{self._occurrences}]"
 
 
 class ItemNotIn(ItemMatches):
     """
-    >>> g = none_of_items[{'a', 'b', 'c'},:2]
+    >>> g = none_of_items('a', 'b', 'c')[:2]
     >>> g.take('a')
     Traceback (most recent call last):
     ...
     KeyError: "Unexpected item 'a'"
     >>> g = g.take('d')
     >>> g
-    none_of_items[['a', 'b', 'c'], 1:1]
+    none_of_items('a', 'b', 'c')[1:1]
     >>> g.take('d') is None
     True
     """
-    def __init__(self, vs, occurrences=once_instance):
-        ItemMatches.__init__(self, lambda k: k not in vs, occurrences)
+
+    def __init__(self, *vs: Any, occurrences: Occurrences = once_instance):
+        set_vs = set(vs)
+        ItemMatches.__init__(self, lambda k: k not in set_vs, occurrences)
         self._vs = vs
 
+    def __getitem__(self, item: Union[range, int]) -> "ItemNotIn":
+        return ItemNotIn(*self._vs, occurrences=occurrences(item))
+
     def __repr__(self):
-        return f"none_of_items[{sorted(self._vs)}, {self._occurrences}]"
+        return f"none_of_items{self._vs}[{self._occurrences}]"
 
 
 class KeyMatches(ItemMatches):
     """
     Key
 
-    >>> g = key_matches[lambda k: k == 'a', 1]
+    >>> g = key_matches(lambda k: k == 'a')
+    >>> g
+    key_matches(<lambda>)[1:1]
     >>> g.take(1)
     Traceback (most recent call last):
     ...
@@ -158,6 +178,7 @@ class KeyMatches(ItemMatches):
     >>> g.take('a') is None
     True
     """
+
     def __init__(self, func: Callable[[Any], bool],
                  occurrences=once_instance):
         ItemMatches.__init__(self,
@@ -165,8 +186,11 @@ class KeyMatches(ItemMatches):
                              occurrences)
         self._func_name = func.__name__
 
+    def __getitem__(self, item: Union[slice, int]) -> "ItemMatches":
+        return KeyMatches(self._func, occurrences(item))
+
     def __repr__(self):
-        return f"key_matches[{self._func_name}, {self._occurrences}]"
+        return f"key_matches({self._func_name})[{self._occurrences}]"
 
 
 class AnyKey(ItemMatches):
@@ -181,9 +205,17 @@ class AnyKey(ItemMatches):
     ...
     KeyError: 'Unexpected item idx(1)'
     """
+
     def __init__(self, occurrences=once_instance):
         ItemMatches.__init__(self, lambda k: not isinstance(k, idx),
                              occurrences)
+
+    def __getitem__(self, item: Union[range, int]) -> "AnyKey":
+        """
+        :param item: int or slice
+        :return:
+        """
+        return AnyKey(occurrences(item))
 
     def __repr__(self):
         return f"any_key[{self._occurrences}]"
@@ -191,64 +223,76 @@ class AnyKey(ItemMatches):
 
 class KeyIn(ItemMatches):
     """
-    >>> g = any_of_keys[{'a', 'b', 'c'},:2]
+    >>> g = any_of_keys('a', 'b', 'c')[:2]
     >>> g.take('d')
     Traceback (most recent call last):
     ...
     KeyError: "Unexpected item 'd'"
     >>> g = g.take('a')
     >>> g
-    any_of_keys[['a', 'b', 'c'], 1:1]
+    any_of_keys('a', 'b', 'c')[1:1]
     >>> g.take('b') is None
     True
-    >>> g = any_of_keys[{0, 1, 2},:2]
+    >>> g = any_of_keys(0, 1, 2)[:2]
     >>> g.take(idx(0))
     Traceback (most recent call last):
     ...
     KeyError: 'Unexpected item idx(0)'
-    >>> g = any_of_keys[{idx(0)},:2]
+    >>> g = any_of_keys(idx(0))[:2]
     Traceback (most recent call last):
     ...
-    ValueError: Possible key must no be `idx`: {idx(0)}
+    ValueError: Possible keys must not be `idx`: (idx(0),)
     """
-    def __init__(self, ks, occurrences=once_instance):
+
+    def __init__(self, *ks, occurrences=once_instance):
+        if any(isinstance(k, idx) for k in ks):
+            raise ValueError(f"Possible keys must not be `idx`: {ks}")
+        set_ks = set(ks)
         ItemMatches.__init__(self,
-                             lambda k: not isinstance(k, idx) and k in ks,
+                             lambda k: not isinstance(k, idx) and k in set_ks,
                              occurrences)
         self._ks = ks
 
+    def __getitem__(self, item: Union[range, int]) -> "KeyIn":
+        return KeyIn(*self._ks, occurrences=occurrences(item))
+
     def __repr__(self):
-        return f"any_of_keys[{sorted(self._ks)}, {self._occurrences}]"
+        return f"any_of_keys{self._ks}[{self._occurrences}]"
 
 
 class KeyNotIn(ItemMatches):
     """
-    >>> g = none_of_keys[{'a', 'b', 'c'},:2]
+    >>> g = none_of_keys('a', 'b', 'c')[:2]
     >>> g.take('a')
     Traceback (most recent call last):
     ...
     KeyError: "Unexpected item 'a'"
     >>> g = g.take('d')
     >>> g
-    none_of_keys[['a', 'b', 'c'], 1:1]
+    none_of_keys('a', 'b', 'c')[1:1]
     >>> g.take('d') is None
     True
     """
-    def __init__(self, ks, occurrences=once_instance):
+
+    def __init__(self, *ks, occurrences=once_instance):
+        set_ks = set(ks)
         ItemMatches.__init__(self,
-                             lambda k: not isinstance(k, idx) and k not in ks,
+                             lambda k: not isinstance(k, idx) and k not in set_ks,
                              occurrences)
         self._ks = ks
 
+    def __getitem__(self, item: Union[range, int]) -> "KeyNotIn":
+        return KeyNotIn(*self._ks, occurrences=occurrences(item))
+
     def __repr__(self):
-        return f"none_of_keys[{sorted(self._ks)}, {self._occurrences}]"
+        return f"none_of_keys{self._ks}[{self._occurrences}]"
 
 
 class IndexMatches(ItemMatches):
     """
     Key
 
-    >>> g = index_matches[lambda k: k == 'a', 1]
+    >>> g = index_matches(lambda k: k == 'a')[1]
     >>> g.take(1)
     Traceback (most recent call last):
     ...
@@ -256,6 +300,7 @@ class IndexMatches(ItemMatches):
     >>> g.take('a') is None
     True
     """
+
     def __init__(self, func: Callable[[Any], bool],
                  occurrences=once_instance):
         ItemMatches.__init__(self,
@@ -279,9 +324,17 @@ class AnyIndex(ItemMatches):
     ...
     KeyError: 'Unexpected item 1'
     """
+
     def __init__(self, occurrences=once_instance):
         ItemMatches.__init__(self, lambda k: isinstance(k, idx),
                              occurrences)
+
+    def __getitem__(self, item: Union[range, int]) -> "AnyIndex":
+        """
+        :param item: int or slice
+        :return:
+        """
+        return AnyIndex(occurrences(item))
 
     def __repr__(self):
         return f"any_index[{self._occurrences}]"
@@ -289,147 +342,61 @@ class AnyIndex(ItemMatches):
 
 class IndexIn(ItemMatches):
     """
-    >>> g = any_of_indices[{'a', 'b', 'c'},:2]
+    >>> g = any_of_indices('a', 'b', 'c')[:2]
     Traceback (most recent call last):
     ...
-    ValueError: Possible key must no be `idx`: ['a', 'b', 'c']
-    >>> g = any_of_indices[{0, 1, 2},:2]
+    ValueError: Possible indices must be `idx`: ('a', 'b', 'c')
+    >>> g = any_of_indices(0, 1, 2)[:2]
     Traceback (most recent call last):
     ...
-    ValueError: Possible key must no be `idx`: [0, 1, 2]
-    >>> g = any_of_indices[{idx(0)},:2]
+    ValueError: Possible indices must be `idx`: (0, 1, 2)
+    >>> g = any_of_indices(idx(0))[:2]
     >>> g.take(idx(0))
-    any_of_indices[[idx(0)], 1:1]
+    any_of_indices(idx(0),)[1:1]
     """
-    def __init__(self, ks, occurrences=once_instance):
+
+    def __init__(self, *ks, occurrences=once_instance):
+        if any(not isinstance(k, idx) for k in ks):
+            raise ValueError(f"Possible indices must be `idx`: {ks}")
+        set_ks = set(ks)
         ItemMatches.__init__(self,
-                             lambda k: isinstance(k, idx) and k in ks,
+                             lambda k: isinstance(k, idx) and k in set_ks,
                              occurrences)
         self._ks = ks
 
+    def __getitem__(self, item: Union[range, int]) -> ItemIn:
+        return IndexIn(*self._ks, occurrences=occurrences(item))
+
     def __repr__(self):
-        return f"any_of_indices[{sorted(self._ks)}, {self._occurrences}]"
+        return f"any_of_indices{self._ks}[{self._occurrences}]"
 
 
 class IndexNotIn(ItemMatches):
     """
-    >>> g = none_of_indices[{idx(0), idx(1), idx(2)},:2]
+    >>> g = none_of_indices(idx(0), idx(1), idx(2))[:2]
     >>> g.take('a')
     Traceback (most recent call last):
     ...
     KeyError: "Unexpected item 'a'"
     >>> g = g.take(idx(3))
     >>> g
-    none_of_indices[[idx(0), idx(1), idx(2)], 1:1]
+    none_of_indices(idx(0), idx(1), idx(2))[1:1]
     >>> g.take(idx(4)) is None
     True
     """
-    def __init__(self, ks, occurrences=once_instance):
+
+    def __init__(self, *ks, occurrences=once_instance):
         ItemMatches.__init__(self,
                              lambda k: isinstance(k, idx) and k not in ks,
                              occurrences)
         self._ks = ks
 
+    def __getitem__(self, item: Union[range, int]) -> "IndexIn":
+        return IndexNotIn(*self._ks, occurrences=occurrences(item))
+
     def __repr__(self):
-        return f"none_of_indices[{sorted(self._ks)}, {self._occurrences}]"
+        return f"none_of_indices{self._ks}[{self._occurrences}]"
 
-
-############
-# builders #
-############
-class ItemMatchesBuilder:
-    def __getitem__(self, item: Tuple[
-        Callable[[Any], bool], Union[slice, int]]) -> ItemMatches:
-        func, n = item
-        return ItemMatches(func, occurrences(n))
-
-
-class AnyItemBuilder:
-    def __getitem__(self, item: Union[range, int]) -> AnyItem:
-        """
-        :param item: int or slice
-        :return:
-        """
-        return AnyItem(occurrences(item))
-
-
-class ItemInBuilder:
-    def __getitem__(self,
-                    item: Tuple[Sequence[Any], Union[range, int]]) -> ItemIn:
-        vs, n = item
-        return ItemIn(vs, occurrences(n))
-
-
-class ItemNotInBuilder:
-    def __getitem__(self,
-                    item: Tuple[Sequence[Any], Union[range, int]]) -> ItemNotIn:
-        vs, n = item
-        return ItemNotIn(vs, occurrences(n))
-
-
-class KeyMatchesBuilder:
-    def __getitem__(self, item: Tuple[
-        Callable[[Any], bool], Union[slice, int]]) -> ItemMatches:
-        func, n = item
-        return KeyMatches(func, occurrences(n))
-
-
-class AnyKeyBuilder:
-    def __getitem__(self, item: Union[range, int]) -> AnyKey:
-        """
-        :param item: int or slice
-        :return:
-        """
-        return AnyKey(occurrences(item))
-
-
-class KeyInBuilder:
-    def __getitem__(self,
-                    item: Tuple[Sequence[Any], Union[range, int]]) -> KeyIn:
-        ks, n = item
-        if any(isinstance(k, idx) for k in ks):
-            raise ValueError(f"Possible key must no be `idx`: {ks}")
-        return KeyIn(ks, occurrences(n))
-
-
-class KeyNotInBuilder:
-    def __getitem__(self,
-                    item: Tuple[Sequence[Any], Union[range, int]]) -> KeyIn:
-        ks, n = item
-        return KeyNotIn(ks, occurrences(n))
-
-
-class IndexMatchesBuilder:
-    def __getitem__(self, item: Tuple[
-        Callable[[Any], bool], Union[slice, int]]) -> ItemMatches:
-        func, n = item
-        return IndexMatches(func, occurrences(n))
-
-
-
-class AnyIndexBuilder:
-    def __getitem__(self, item: Union[range, int]) -> AnyIndex:
-        """
-        :param item: int or slice
-        :return:
-        """
-        return AnyIndex(occurrences(item))
-
-
-class IndexInBuilder:
-    def __getitem__(self,
-                    item: Tuple[Sequence[Any], Union[range, int]]) -> IndexIn:
-        ks, n = item
-        if any(not isinstance(k, idx) for k in ks):
-            raise ValueError(f"Possible key must no be `idx`: {sorted(ks)}")
-        return IndexIn(ks, occurrences(n))
-
-
-class IndexNotInBuilder:
-    def __getitem__(self,
-                    item: Tuple[Sequence[Any], Union[range, int]]) -> IndexIn:
-        ks, n = item
-        return IndexNotIn(ks, occurrences(n))
 
 ###########
 # indices #
@@ -509,20 +476,20 @@ def signature(*chunks):
     return Signature(chunks)
 
 
-item_matches = ItemMatchesBuilder()
-any_item = AnyItemBuilder()
-any_of_items = ItemInBuilder()
-none_of_items = ItemNotInBuilder()
+item_matches = ItemMatches
+any_item = AnyItem()
+any_of_items = ItemIn
+none_of_items = ItemNotIn
 
-key_matches = KeyMatchesBuilder()
-any_key = AnyKeyBuilder()
-any_of_keys = KeyInBuilder()
-none_of_keys = KeyNotInBuilder()
+key_matches = KeyMatches
+any_key = AnyKey()
+any_of_keys = KeyIn
+none_of_keys = KeyNotIn
 
-index_matches = IndexMatchesBuilder()
-any_index = AnyIndexBuilder()
-any_of_indices = IndexInBuilder()
-none_of_indices = IndexNotInBuilder()
+index_matches = IndexMatches
+any_index = AnyIndex()
+any_of_indices = IndexIn
+none_of_indices = IndexNotIn
 
 if __name__ == "__main__":
     import doctest

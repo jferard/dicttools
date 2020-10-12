@@ -18,11 +18,11 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
-from typing import Tuple, Hashable, Any, Mapping, Iterable
+from typing import Tuple, Hashable, Any, Iterable
 
 
 @dataclass
-class NestedItem(ABC):
+class Item(ABC):
     """
     The result of a search in a tree
     """
@@ -34,17 +34,13 @@ class NestedItem(ABC):
     def terminal(self) -> bool:
         pass
 
+    @abstractmethod
     def is_mapping(self):
-        return isinstance(self.value, Mapping)
+        pass
 
+    @abstractmethod
     def items(self):
-        return self.value.items()
-
-    def is_plain_iterable(self):
-        return is_plain_iterable(self.value)
-
-    def enumerate(self):
-        return enumerate(self.value)
+        pass
 
     @abstractmethod
     def draw(self):
@@ -52,46 +48,6 @@ class NestedItem(ABC):
 
     def __iter__(self):
         return iter((self.path, self.value))
-
-
-@dataclass
-class TerminalItem(NestedItem):
-    path: Tuple[Hashable]
-    value: Any
-
-    @property
-    def terminal(self) -> bool:
-        return True
-
-    def draw(self):
-        return "-".join(map(str, self.path)) + "^" + str(self.value)
-
-
-@dataclass
-class NonTerminalItem(NestedItem):
-    path: Tuple[Hashable]
-    value: Hashable
-
-    @property
-    def terminal(self) -> bool:
-        return False
-
-    def draw(self):
-        return "-".join(map(str, self.path + (self.value,)))
-
-
-def json_item(path: Tuple[Hashable], value: Any) -> NestedItem:
-    if isinstance(value, Mapping) or is_plain_iterable(value):
-        return NonTerminalItem(path, value)
-    else:
-        return TerminalItem(path, value)
-
-
-def tree_item(path: Tuple[Hashable], value: Any) -> NestedItem:
-    if isinstance(value, Mapping):
-        return NonTerminalItem(path, value)
-    else:
-        return TerminalItem(path, value)
 
 
 def is_plain_iterable(data):

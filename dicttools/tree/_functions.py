@@ -20,9 +20,9 @@
 from collections import Counter
 from typing import Mapping, Tuple, List, Iterable
 
-from dicttools._util import NestedItem, TerminalItem, NonTerminalItem, \
-    tree_item
-from dicttools.tree._util import list_get
+from dicttools._util import (Item)
+from dicttools.tree._util import list_get, TerminalTreeItem, \
+    NonTerminalTreeItem, tree_item
 
 
 def tree_bfs(d):
@@ -32,16 +32,16 @@ def tree_bfs(d):
     ['a', 'e', 'f', 'a-b', 'a-c', 'e^3', 'f-g', 'f-h', 'a-b^1', 'a-c-d', 'f-g^4', 'f-h-i', 'a-c-d^2', 'f-h-i^5']
     """
     for k in d.keys():
-        yield NonTerminalItem(tuple(), k)
+        yield NonTerminalTreeItem(tuple(), k)
         stack = [tree_item((k,), v) for k, v in d.items()]
     while stack:
         se = stack.pop(0)
         if se.is_mapping():
             for k, v in se.value.items():
                 if v is None:
-                    yield TerminalItem(se.path, k)
+                    yield TerminalTreeItem(se.path, k)
                 else:
-                    yield NonTerminalItem(se.path, k)
+                    yield NonTerminalTreeItem(se.path, k)
                     stack.append(tree_item(se.path + (k,), v))
         else:
             yield se
@@ -55,7 +55,7 @@ def tree_dfs(d):
     ['a', 'a-b', 'a-b^1', 'a-c', 'a-c-d', 'a-c-d^2', 'e', 'e^3', 'f', 'f-g', 'f-g^4', 'f-h', 'f-h-i', 'f-h-i^5']
     """
     for k0, v0 in d.items():
-        yield NonTerminalItem(tuple(), k0)
+        yield NonTerminalTreeItem(tuple(), k0)
         stack = [tree_item((k0,), v0)]
         while stack:
             se = stack.pop()
@@ -63,16 +63,16 @@ def tree_dfs(d):
                 temp = []
                 for k, v in se.value.items():
                     if v is None:
-                        temp.append(TerminalItem(se.path, k))
+                        temp.append(TerminalTreeItem(se.path, k))
                     else:
-                        temp.append(NonTerminalItem(se.path, k))
+                        temp.append(NonTerminalTreeItem(se.path, k))
                         temp.append(tree_item(se.path + (k,), v))
                 stack.extend(reversed(temp))
             else:
                 yield se
 
 
-def to_nested(ses: Iterable[NestedItem]):
+def to_nested(ses: Iterable[Item]):
     """
     >>> d = {'a':{'b': 1, 'c':{'d':2}}, 'e': 3, 'f':{'g':4, 'h':{'i': 5}}}
     >>> to_nested(tree_dfs(d)) == d

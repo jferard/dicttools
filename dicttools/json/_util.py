@@ -17,12 +17,13 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import reduce
 from typing import (Mapping, Iterable, Collection, Iterator, MutableMapping,
-                    Callable, Union, Any, Tuple)
+                    Callable, Union, Any, Tuple, Hashable)
 
-from dicttools._util import (is_plain_iterable, json_item)
+from dicttools._util import (is_plain_iterable, Item)
 from dicttools.types import K
 
 
@@ -170,18 +171,61 @@ def nested_items(d_or_iter: Union[Mapping[K, Any], Iterator[Tuple[Tuple, Any]]]
     """
     if isinstance(d_or_iter, Iterator):
         return d_or_iter
+    else:
+        return nested_bfs_terminal_items(d_or_iter)
 
-    stack = [json_item(tuple(), d_or_iter)]
+
+def nested_bfs_terminal_items(d: Mapping):
+    stack = [json_item(tuple(), d)]
     while stack:
         item = stack.pop()
-        if item.is_mapping():
+        try:
             for k, v in item.items():
                 stack.insert(0, json_item(item.path + (k,), v))
-        elif item.is_plain_iterable():
-            for i, v in item.enumerate():
-                stack.insert(0, json_item(item.path + (idx(i),), v))
-        else:
+        except TypeError:
             yield item
+
+
+def nested_bfs_all_items(d: Mapping):
+    stack = [json_item(tuple(), d)]
+    while stack:
+        item = stack.pop()
+        try:
+            for k, v in item.items():
+                yield NonTerminalJsonItem(item.path, k)
+                stack.insert(0, json_item(item.path + (k,), v))
+        except TypeError:
+            yield item
+
+
+def nested_dfs_terminal_items(d: Mapping):
+    stack = [json_item(tuple(), d)]
+    while stack:
+        item = stack.pop()
+        try:
+            for k, v in item.items():
+                stack.append(json_item(item.path + (k,), v))
+        except TypeError:
+            yield item
+
+
+def nested_dfs_all_items(d: Mapping):
+    for k0, v0 in d.items():
+        yield NonTerminalJsonItem(tuple(), k0)
+        stack = [json_item((k0,), v0)]
+        while stack:
+            se = stack.pop()
+            try:
+                temp = []
+                for k, v in se.items():
+                    if v is None:
+                        temp.append(TerminalJsonItem(se.path, k))
+                    else:
+                        temp.append(NonTerminalJsonItem(se.path, k))
+                        temp.append(json_item(se.path + (k,), v))
+                stack.extend(reversed(temp))
+            except TypeError:
+                yield se
 
 
 def nested_flatten(d: Mapping[K, Any]) -> Mapping[K, Any]:
@@ -253,7 +297,65 @@ def stop_range_0(vs: Collection[int]):
         return -1
 
 
+@dataclass
+class JsonItem(Item, ABC):
+    """
+    The result of a search in a tree
+    """
+    @property
+    @abstractmethod
+    def terminal(self) -> bool:
+        pass
+
+    def is_mapping(self):
+        return isinstance(self.value, Mapping) or is_plain_iterable(self.value)
+
+    def items(self):
+        if isinstance(self.value, Mapping):
+            return self.value.items()
+        elif is_plain_iterable(self.value):
+            return ((idx(i), v) for i, v in enumerate(self.value))
+        else:
+            raise TypeError(f"Value {self.value} has no items")
+
+    @abstractmethod
+    def draw(self):
+        pass
+
+    def __iter__(self):
+        return iter((self.path, self.value))
+
+
+@dataclass
+class TerminalJsonItem(JsonItem):
+    @property
+    def terminal(self) -> bool:
+        return True
+
+    def draw(self):
+        return "-".join(map(str, self.path)) + "^" + str(self.value)
+
+
+@dataclass
+class NonTerminalJsonItem(JsonItem):
+    @property
+    def terminal(self) -> bool:
+        return False
+
+    def draw(self):
+        return "-".join(map(str, self.path + (self.value,)))
+
+
+def json_item(path: Tuple[Hashable], value: Any) -> JsonItem:
+    if isinstance(value, Mapping) or is_plain_iterable(value):
+        return NonTerminalJsonItem(path, value)
+    else:
+        return TerminalJsonItem(path, value)
+
+
 if __name__ == "__main__":
     import doctest
 
     doctest.testmod()
+
+
