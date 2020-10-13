@@ -156,7 +156,7 @@ def to_json(d: Mapping,
 
 
 def nested_items(d_or_iter: Union[Mapping[K, Any], Iterator[Tuple[Tuple, Any]]]
-                 ) -> Iterator[Tuple[Tuple, Any]]:
+                 ) -> Iterator[Item]:
     """
     Create a generator over (path, value).
 

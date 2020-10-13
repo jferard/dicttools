@@ -18,7 +18,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
-from typing import Tuple, Hashable, Any, Iterable
+from typing import Tuple, Hashable, Any, Iterable, Callable
 
 
 @dataclass
@@ -37,6 +37,10 @@ class Item(ABC):
     @abstractmethod
     def is_mapping(self):
         pass
+
+    def map_value(self, func: Callable[[Any], Any]):
+        self.value = func(self.value)
+        return self
 
     @abstractmethod
     def items(self):

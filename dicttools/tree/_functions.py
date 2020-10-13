@@ -18,7 +18,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from collections import Counter
-from typing import Mapping, Tuple, List, Iterable
+from typing import Mapping, Tuple, List, Iterable, Iterator
 
 from dicttools._util import (Item)
 from dicttools.tree._util import list_get, TerminalTreeItem, \
@@ -283,15 +283,48 @@ def tree_length(d) -> bool:
     return tree_length_aux(d, 0) + 1
 
 
-def tree_split(d, func_or_signature, maxsplits=1) -> Tuple[Mapping, ...]:
+def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
+    Tuple[Tuple, Mapping]]:
     """
     Split the dict at the current sig.
+
+    >>> d = {'a': {'b': None,
+    ...            'c': {'d': {'e': {'g': None,
+    ...                              'h': {'i': None,
+    ...                                    'j': None}}},
+    ...                  'f': {'e': None}}}}
+    >>> func = lambda path: path == ('a', 'c', 'd', 'e', 'h') or path == ('a', 'c', 'f')
+    >>> list(tree_prune(d, func))
+    [(('a', 'c', 'd', 'e', 'h'), {'i': None, 'j': None}), (('a', 'c', 'f'), {'e': None})]
+    >>> d == {'a': {'b': None,
+    ...             'c': {'d': {'e': {'g': None,
+    ...                               'h': None}},
+    ...                   'f': None}}}
+    True
 
     :param d:
     :param func_or_signature:
     :return:
     """
-    pass
+    if maxprunes == 0:
+        return
+
+    def tree_prune_aux(d1, cur_path):
+        nonlocal maxprunes
+        if isinstance(d1, Mapping):
+            for k, v in d1.items():
+                next_path = cur_path + (k,)
+                if func_or_signature(next_path):
+                    d1[k] = None
+                    if maxprunes:
+                        yield next_path, v
+                        maxprunes -= 1
+                    else:
+                        break
+
+                yield from tree_prune_aux(v, next_path)
+
+    yield from tree_prune_aux(d, tuple())
 
 
 def tree_merge(d1, func_or_signature, d2) -> Mapping:

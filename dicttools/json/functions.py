@@ -20,7 +20,8 @@
 from typing import Mapping, Sequence, Callable, Iterator, Union
 
 from dicttools._util import (is_plain_iterable)
-from dicttools.json import (json_item, TerminalJsonItem, NonTerminalJsonItem)
+from dicttools.json import (json_item, TerminalJsonItem, NonTerminalJsonItem,
+                            reduce)
 from dicttools.json._signature import Signature
 from dicttools.json._util import idx, nested_items
 from dicttools.types import Nested, NestedItem, Path
@@ -130,14 +131,34 @@ def nested_map_values(d: Mapping, func):
     """
     Map the current dict.
 
-    >>>
-
+    >>> d = {'a':{'b': 1}, 'c':{'d':{'e':{'f': 2}, 'g': 3}}}
+    >>> [item.draw() for item in nested_map_values(d, lambda x: x+1)]
+    ['a-b^2', 'c-d-g^4', 'c-d-e-f^3']
 
     :param d:
     :param func:
     :return:
     """
-    return map(func, nested_items(d))
+    return (item.map_value(func) for item in nested_items(d))
+
+
+def nested_reduce_values(func, d: Mapping, initial=None):
+    """
+    Map the current dict.
+
+    >>> d = {'a':{'b': 1}, 'c':{'d':{'e':{'f': 2}, 'g': 3}}}
+    >>> nested_reduce_values(lambda acc, x: acc+x, d, 0)
+    6
+
+    :param d:
+    :param func:
+    :return:
+    """
+    if initial is None:
+        return reduce(lambda acc, item: func(acc, item.value), nested_items(d))
+    else:
+        return reduce(lambda acc, item: func(acc, item.value), nested_items(d),
+                      initial)
 
 
 def nested_map(d: Mapping, func_or_signature, map_func, default=None,
