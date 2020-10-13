@@ -18,12 +18,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dicttools import *
-
 import unittest
-
-from dicttools.json._signature import any_key, AnyKey
-
 
 # class TestAny(unittest.TestCase):
 #     def test_any_dict_consume(self):

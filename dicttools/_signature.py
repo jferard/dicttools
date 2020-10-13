@@ -17,6 +17,21 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#  This file is part of DictTools.
+#
+#  DictTools is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  DictTools is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from abc import ABC, abstractmethod
 from copy import copy
 from typing import (Callable, Any, Tuple, Sequence, Generic, TypeVar, Optional,
@@ -406,7 +421,7 @@ class IndexNotIn(ItemMatches):
 class Signature(ItemMatches):
     """
     >>> Signature(any_key[:]).take("a")
-    Signature([any_key[:]], 1:1)
+    Signature((any_key[:],), 1:1)
     >>> Signature("b").take("b") is None
     True
     >>> Signature("b").take("c")
@@ -469,7 +484,7 @@ class Signature(ItemMatches):
 
     def __repr__(self):
         chunks = ", ".join(str(c) for c in self._chunks)
-        return f"Signature({sorted(self._chunks)}, {self._occurrences})"
+        return f"Signature({self._chunks}, {self._occurrences})"
 
 
 def signature(*chunks):

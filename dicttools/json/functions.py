@@ -17,12 +17,12 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Mapping, Sequence, Callable, Iterator, Union
+from typing import Mapping, Callable, Iterator, Union
 
 from dicttools._util import (is_plain_iterable)
 from dicttools.json import (json_item, TerminalJsonItem, NonTerminalJsonItem,
                             reduce)
-from dicttools.json._signature import Signature
+from dicttools._signature import Signature
 from dicttools.json._util import idx, nested_items
 from dicttools.types import Nested, NestedItem, Path
 
@@ -51,7 +51,7 @@ def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested,
     ...     else: return len(item.path) == 2 and item.terminal
     >>> [item.draw() for item in nested_filter(map_func, d, shortcut=True)]
     ['a-b^1']
-    >>> from dicttools.json import any_key, any_of_keys
+    >>> from dicttools import any_key, any_of_keys
     >>> [item.draw() for item in
     ...     nested_filter(Signature(any_of_keys('a', 'c')), d)]
     ["a-{'b': 1}", "c-{'d': {'e': {'f': 2}, 'g': 3}}"]
@@ -203,7 +203,7 @@ def update(sig, data, f):
     """
     DEPRECATED: see nested_map
 
-    >>> from dicttools.json import any_key
+    >>> from dicttools import any_key
     >>> update(Signature(any_key[:1]), {"a": {"b": 1}}, lambda _path, v: list(v))
     {'a': ['b']}
     >>> update(Signature(any_key[:1], "b"), {"a": {"b": 1, "c": 2}}, lambda _path, _v: None)
@@ -232,7 +232,7 @@ def find(signature, data):
     """
     DEPRECATED: see filter
 
-    >>> from dicttools.json import any_key
+    >>> from dicttools import any_key
     >>> list(find(Signature(any_key[:]), {"a": {"b": 1}}))
     [(['a', 'b'], 1)]
     >>> list(find(Signature(any_key[:1]), {"a": {"b": 1, "c": 2}}))

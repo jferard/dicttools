@@ -18,22 +18,27 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from collections import Counter
-from typing import Mapping, Tuple, List, Iterable, Iterator
+from typing import Mapping, Tuple, List, Iterable, Iterator, Callable
 
-from dicttools._util import (Item)
-from dicttools.tree._util import list_get, TerminalTreeItem, \
-    NonTerminalTreeItem, tree_item
+from dicttools import (Item)
+from dicttools import Signature
+from dicttools.tree._util import (list_get, TerminalTreeItem, NonTerminalTreeItem, tree_item)
 
 
 def tree_bfs(d):
     """
-    >>> [se.draw() for se in tree_bfs({'a':{'b': {1: None}, 'c':{'d': {2: None}}},
-    ...     'e': {3: None}, 'f':{'g': {4: None}, 'h':{'i': {5: None}}}})]
+    >>> d = {'a': {'b': {1: None},
+    ...            'c': {'d': {2: None}}},
+    ...      'e': {3: None},
+    ...      'f': {'g': {4: None},
+    ...            'h': {'i': {5: None}}}}
+
+    >>> [se.draw() for se in tree_bfs(d)]
     ['a', 'e', 'f', 'a-b', 'a-c', 'e^3', 'f-g', 'f-h', 'a-b^1', 'a-c-d', 'f-g^4', 'f-h-i', 'a-c-d^2', 'f-h-i^5']
     """
     for k in d.keys():
         yield NonTerminalTreeItem(tuple(), k)
-        stack = [tree_item((k,), v) for k, v in d.items()]
+    stack = [tree_item((k,), v) for k, v in d.items()]
     while stack:
         se = stack.pop(0)
         if se.is_mapping():
@@ -301,16 +306,24 @@ def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
     ...                               'h': None}},
     ...                   'f': None}}}
     True
+    >>> from dicttools import *
+    >>> list(tree_prune(d, Signature(any_key[:2], any_of_keys('d', 'f'))))
+    [(('a', 'c', 'd'), {'e': {'g': None, 'h': None}}), (('a', 'c', 'f'), None)]
+    >>> from dicttools import dict_print
+    >>> d == {'a': {'b': None,
+    ...             'c': {'d': None,
+    ...                   'f': None}}}
+    True
 
     :param d:
     :param func_or_signature:
     :return:
     """
-    if maxprunes == 0:
-        return
-
-    def tree_prune_aux(d1, cur_path):
+    def tree_prune_func(d1, cur_path):
         nonlocal maxprunes
+        if maxprunes == 0:
+            return
+
         if isinstance(d1, Mapping):
             for k, v in d1.items():
                 next_path = cur_path + (k,)
@@ -322,9 +335,35 @@ def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
                     else:
                         break
 
-                yield from tree_prune_aux(v, next_path)
+                yield from tree_prune_func(v, next_path)
 
-    yield from tree_prune_aux(d, tuple())
+    def tree_prune_sig(d1: Mapping, sig: Signature, cur_path: Tuple
+                       ) -> Iterator[Tuple[Tuple, Mapping]]:
+        nonlocal maxprunes
+        if maxprunes == 0:
+            return
+
+        if isinstance(d1, Mapping):
+            for k, v in d1.items():
+                if maxprunes:
+                    try:
+                        next_path = cur_path + (k,)
+                        next_sig = sig.take(k)
+                        if next_sig is None:
+                            d1[k] = None
+                            yield next_path, v
+                            maxprunes -= 1
+                        else:
+                            yield from tree_prune_sig(v, next_sig, next_path)
+                    except KeyError:
+                        pass
+
+    if isinstance(func_or_signature, Callable):
+        yield from tree_prune_func(d, tuple())
+    elif isinstance(func_or_signature, Signature):
+        yield from tree_prune_sig(d, func_or_signature, tuple())
+    else:
+        raise TypeError()
 
 
 def tree_merge(d1, func_or_signature, d2) -> Mapping:
