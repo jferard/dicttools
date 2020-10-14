@@ -25,6 +25,34 @@ from dicttools import Signature
 from dicttools.tree._util import (list_get, TerminalTreeItem, NonTerminalTreeItem, tree_item)
 
 
+def is_tree(d: Mapping):
+    """
+    A tree is represented by a nested dict. Leaves are keys mapped to `None`
+    value.
+
+    >>> is_tree(None)
+    False
+    >>> is_tree({'a': {'b': None, 'c': None}})
+    True
+    >>> is_tree({'a': {'b': None, 'c': 1}})
+    False
+    """
+    if not isinstance(d, Mapping):
+        return False
+
+    stack = [d]
+    while stack:
+        cur = stack.pop()
+        for k, v in cur.items():
+            if v is None:
+                continue
+            elif isinstance(v, Mapping):
+                stack.append(v)
+            else:
+                return False
+    return True
+
+
 def tree_bfs(d):
     """
     >>> d = {'a': {'b': {1: None},
