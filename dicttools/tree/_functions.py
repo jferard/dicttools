@@ -18,7 +18,8 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from collections import Counter
-from typing import Mapping, Tuple, List, Iterable, Iterator, Callable
+from typing import Mapping, Tuple, List, Iterable, Iterator, Callable, \
+    MutableMapping
 
 from dicttools import (Item)
 from dicttools import Signature
@@ -429,16 +430,54 @@ def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
         raise TypeError()
 
 
-def tree_merge(d1, func_or_signature, d2) -> Mapping:
+def tree_hook(d1: Mapping, func_or_signature, d2: Mapping,
+              shallow: bool = True):
     """
-    Merge `d1` and `d2` at level.
+    >>> d1 = {'a': {'b': None, 'c': {'d': None, 'e': None}}}
+    >>> d2 = {'f': None}
+    >>> tree_hook(d1, lambda path: path == ('a', 'b'), d2)
+    ('a', 'b')
+    >>> d1 == {'a': {'b': {'f': None}, 'c': {'d': None, 'e': None}}}
+    True
+    >>> tree_hook(d1, lambda path: path == ('a', 'x'), d2) is None
+    True
+    >>> d1 == {'a': {'b': {'f': None}, 'c': {'d': None, 'e': None}}}
+    True
+    """
 
-    :param d1:
-    :param func_or_signature:
-    :param d2:
-    :return:
-    """
-    pass
+    def tree_hook_sig(d: Mapping):
+        pass
+
+    def tree_hook_func(d: Mapping, cur_path):
+        if isinstance(d, Mapping):
+            for k, v in d.items():
+                next_path = cur_path + (k,)
+                if func_or_signature(next_path):
+                    if shallow:
+                        d[k] = d2
+                    else:
+                        d[k] = tree_clone(d2)
+                    return next_path
+                else:
+                    return tree_hook_func(v, next_path)
+
+    def tree_hook_func(d: MutableMapping):
+        stack = [(d, tuple())]
+        while stack:
+            cur, cur_path = stack.pop()
+            if isinstance(cur, Mapping):
+                for k, v in cur.items():
+                    next_path = cur_path + (k,)
+                    if func_or_signature(next_path):
+                        if shallow:
+                            cur[k] = d2
+                        else:
+                            cur[k] = tree_clone(d2)
+                        return next_path
+                    else:
+                        stack.insert(0, (v, next_path))
+
+    return tree_hook_func(d1)
 
 
 if __name__ == "__main__":
