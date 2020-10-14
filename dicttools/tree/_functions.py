@@ -80,6 +80,41 @@ def tree_bfs(d):
             yield se
 
 
+def tree_clone(d: Mapping):
+    """
+    Clone a tree
+
+    We have:
+
+        >>> d1 = {'a': {'b': None, 'c': {'d': None, 'e': None}}}
+        >>> d2 = d1
+        >>> d2['a']['b'] = {'f': None}
+        >>> d2 == d1
+        True
+
+    Because `d2` and `d1` refer to the same object. But:
+
+        >>> d2 = tree_clone(d1)
+        >>> d2 == d1
+        True
+        >>> d2['a']['b'] = None
+        >>> d2 == d1
+        False
+
+    """
+    root = {}
+    stack = [(root, k, v) for k, v in d.items()]
+    while stack:
+        ret, k, v = stack.pop()
+        if isinstance(v, Mapping):
+            new_ret = ret.setdefault(k, {})
+            for k2, v2 in v.items():
+                stack.append((new_ret, k2, v2))
+        else:
+            ret[k] = None
+    return root
+
+
 def tree_dfs(d):
     """
     >>> [se.draw() for se in tree_dfs({'a':{'b': {1: None},
