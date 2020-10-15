@@ -28,3 +28,6 @@ F = TypeVar('F')
 Nested = NewType('Nested', Mapping)
 Path = NewType('Path', Tuple[Any])
 NestedItem = NewType('JsonItem', Tuple[Path, Any])
+
+NoneType = type(None)
+Tree = NewType('Tree', Mapping[Hashable, Union[NoneType, "Tree"]])

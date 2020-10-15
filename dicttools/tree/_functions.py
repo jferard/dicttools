@@ -18,40 +18,13 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from collections import Counter
-from typing import Mapping, Tuple, List, Iterable, Iterator, Callable, \
+from typing import Mapping, Tuple, List, Iterator, Callable, \
     MutableMapping
 
-from dicttools import (Item)
 from dicttools import Signature
-from dicttools.tree._util import (list_get, TerminalTreeItem, NonTerminalTreeItem, tree_item)
-
-
-def is_tree(d: Mapping):
-    """
-    A tree is represented by a nested dict. Leaves are keys mapped to `None`
-    value.
-
-    >>> is_tree(None)
-    False
-    >>> is_tree({'a': {'b': None, 'c': None}})
-    True
-    >>> is_tree({'a': {'b': None, 'c': 1}})
-    False
-    """
-    if not isinstance(d, Mapping):
-        return False
-
-    stack = [d]
-    while stack:
-        cur = stack.pop()
-        for k, v in cur.items():
-            if v is None:
-                continue
-            elif isinstance(v, Mapping):
-                stack.append(v)
-            else:
-                return False
-    return True
+from dicttools.tree._util import (list_get, TerminalTreeItem,
+                                  NonTerminalTreeItem, tree_item, tree_clone,
+                                  to_tree)
 
 
 def tree_bfs(d):
@@ -64,6 +37,9 @@ def tree_bfs(d):
 
     >>> [se.draw() for se in tree_bfs(d)]
     ['a', 'e', 'f', 'a-b', 'a-c', 'e^3', 'f-g', 'f-h', 'a-b^1', 'a-c-d', 'f-g^4', 'f-h-i', 'a-c-d^2', 'f-h-i^5']
+    >>> to_tree(tree_bfs(d)) == d
+    True
+
     """
     for k in d.keys():
         yield NonTerminalTreeItem(tuple(), k)
@@ -81,47 +57,14 @@ def tree_bfs(d):
             yield se
 
 
-def tree_clone(d: Mapping):
-    """
-    Clone a tree
-
-    We have:
-
-        >>> d1 = {'a': {'b': None, 'c': {'d': None, 'e': None}}}
-        >>> d2 = d1
-        >>> d2['a']['b'] = {'f': None}
-        >>> d2 == d1
-        True
-
-    Because `d2` and `d1` refer to the same object. But:
-
-        >>> d2 = tree_clone(d1)
-        >>> d2 == d1
-        True
-        >>> d2['a']['b'] = None
-        >>> d2 == d1
-        False
-
-    """
-    root = {}
-    stack = [(root, k, v) for k, v in d.items()]
-    while stack:
-        ret, k, v = stack.pop()
-        if isinstance(v, Mapping):
-            new_ret = ret.setdefault(k, {})
-            for k2, v2 in v.items():
-                stack.append((new_ret, k2, v2))
-        else:
-            ret[k] = None
-    return root
-
-
 def tree_dfs(d):
     """
     >>> [se.draw() for se in tree_dfs({'a':{'b': {1: None},
     ... 'c':{'d': {2: None}}}, 'e': {3: None}, 'f':{'g': {4: None},
     ... 'h':{'i': {5: None}}}})]
     ['a', 'a-b', 'a-b^1', 'a-c', 'a-c-d', 'a-c-d^2', 'e', 'e^3', 'f', 'f-g', 'f-g^4', 'f-h', 'f-h-i', 'f-h-i^5']
+    >>> to_tree(tree_dfs(d)) == d
+    True
     """
     for k0, v0 in d.items():
         yield NonTerminalTreeItem(tuple(), k0)
@@ -139,25 +82,6 @@ def tree_dfs(d):
                 stack.extend(reversed(temp))
             else:
                 yield se
-
-
-def to_nested(ses: Iterable[Item]):
-    """
-    >>> d = {'a':{'b': 1, 'c':{'d':2}}, 'e': 3, 'f':{'g':4, 'h':{'i': 5}}}
-    >>> to_nested(tree_dfs(d)) == d
-    True
-    >>> to_nested(tree_bfs(d)) == d
-    True
-    """
-    ret = {}
-    root = ret
-    for se in ses:
-        if se.terminal:
-            ret = root
-            for k in se.path[:-1]:
-                ret = ret.setdefault(k, {})
-            ret[se.path[-1]] = se.value
-    return root
 
 
 def tree_depth(d: Mapping) -> int:
