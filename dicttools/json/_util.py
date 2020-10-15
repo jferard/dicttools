@@ -24,7 +24,7 @@ from typing import (Mapping, Iterable, Collection, Iterator, MutableMapping,
                     Callable, Union, Any, Tuple, Hashable)
 
 from dicttools._util import (is_plain_iterable, Item)
-from dicttools.types import K
+from dicttools._types import K
 
 
 @dataclass(eq=True, order=True, unsafe_hash=True)

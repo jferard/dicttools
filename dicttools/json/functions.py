@@ -24,7 +24,7 @@ from dicttools.json import (json_item, TerminalJsonItem, NonTerminalJsonItem,
                             reduce)
 from dicttools._signature import Signature
 from dicttools.json._util import idx, nested_items
-from dicttools.types import Nested, NestedItem, Path
+from dicttools._types import Nested, NestedItem, Path
 
 
 def nested_filter(func_or_signature: Union[Callable, Signature], d: Nested,

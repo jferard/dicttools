@@ -18,32 +18,35 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from collections import Counter
-from typing import Mapping, Tuple, List, Iterator, Callable, \
-    MutableMapping
+from typing import (Mapping, Tuple, List, Iterator, Callable,
+                    MutableMapping, Hashable)
 
 from dicttools import Signature
 from dicttools.tree._util import (list_get, TerminalTreeItem,
                                   NonTerminalTreeItem, tree_item, tree_clone,
-                                  to_tree)
+                                  to_tree, TreeItem)
+from dicttools._types import Tree, MutableTree
 
 
-def tree_bfs(d):
+def tree_bfs(t: Tree) -> Iterator[TreeItem]:
     """
-    >>> d = {'a': {'b': {1: None},
+    >>> t = {'a': {'b': {1: None},
     ...            'c': {'d': {2: None}}},
     ...      'e': {3: None},
     ...      'f': {'g': {4: None},
     ...            'h': {'i': {5: None}}}}
 
-    >>> [se.draw() for se in tree_bfs(d)]
+    >>> [se.draw() for se in tree_bfs(t)]
     ['a', 'e', 'f', 'a-b', 'a-c', 'e^3', 'f-g', 'f-h', 'a-b^1', 'a-c-d', 'f-g^4', 'f-h-i', 'a-c-d^2', 'f-h-i^5']
-    >>> to_tree(tree_bfs(d)) == d
+    >>> to_tree(tree_bfs(t)) == t
     True
 
+    :param t:   a Tree
+    :return:    an iterator
     """
-    for k in d.keys():
+    for k in t.keys():
         yield NonTerminalTreeItem(tuple(), k)
-    stack = [tree_item((k,), v) for k, v in d.items()]
+    stack = [tree_item((k,), v) for k, v in t.items()]
     while stack:
         se = stack.pop(0)
         if se.is_mapping():
@@ -57,16 +60,23 @@ def tree_bfs(d):
             yield se
 
 
-def tree_dfs(d):
+def tree_dfs(t: Tree) -> Iterator[TreeItem]:
     """
-    >>> [se.draw() for se in tree_dfs({'a':{'b': {1: None},
-    ... 'c':{'d': {2: None}}}, 'e': {3: None}, 'f':{'g': {4: None},
-    ... 'h':{'i': {5: None}}}})]
+    >>> t = {'a': {'b': {1: None},
+    ...            'c': {'d': {2: None}}},
+    ...      'e': {3: None},
+    ...      'f': {'g': {4: None},
+    ...            'h': {'i': {5: None}}}}
+
+    >>> [se.draw() for se in tree_dfs(t)]
     ['a', 'a-b', 'a-b^1', 'a-c', 'a-c-d', 'a-c-d^2', 'e', 'e^3', 'f', 'f-g', 'f-g^4', 'f-h', 'f-h-i', 'f-h-i^5']
-    >>> to_tree(tree_dfs(d)) == d
+    >>> to_tree(tree_dfs(t)) == t
     True
+
+    :param t:   a Tree
+    :return:    an iterator
     """
-    for k0, v0 in d.items():
+    for k0, v0 in t.items():
         yield NonTerminalTreeItem(tuple(), k0)
         stack = [tree_item((k0,), v0)]
         while stack:
@@ -84,19 +94,75 @@ def tree_dfs(d):
                 yield se
 
 
-def tree_depth(d: Mapping) -> int:
+def tree_height(t: Tree) -> int:
     """
-    >>> d = {'a':{'b': 1, 'c':{'d':2}}, 'e': 3, 'f':{'g':4, 'h':{'i': 5}}}
-    >>> tree_depth(d)
+    >>> tree_height({'a': None})
+    0
+
+    >>> t = {'a': {'b': {1: None},
+    ...            'c': {'d': {2: None}}},
+    ...      'e': {3: None},
+    ...      'f': {'g': {4: None},
+    ...            'h': {'i': {5: None}}}}
+
+    >>> tree_height(t)
     3
     """
-    if isinstance(d, Mapping):
-        return 1 + max(tree_depth(v) for v in d.values())
+    if isinstance(t, Mapping):
+        return 1 + max(tree_height(v) for v in t.values())
+    elif t is None:
+        return -1
     else:
+        raise TypeError("Malformed Tree")
+
+
+def tree_degree(t: Tree) -> int:
+    """
+    The number of children of a tree.
+
+    >>> t = {'a': None, 'b': {3: None, 4: None}, 'c': None, 'd': {'e': None}}
+
+    >>> tree_degree(t)
+    4
+    >>> tree_degree(t['b'])
+    2
+
+    :param t: a Tree
+    :return: the number of children
+    """
+    if isinstance(t, Mapping):
+        return len(t)
+    elif t is None:
         return 0
+    else:
+        raise TypeError("Malformed Tree")
 
 
-def tree_width(d: Mapping) -> int:
+def tree_size(t: Tree) -> int:
+    """
+    The number of nodes in a tree.
+
+    >>> t = {'a': None, 'b': {3: None, 4: None}, 'c': None, 'd': {'e': None}}
+
+    >>> tree_size(t)
+    7
+
+    :param t: a Tree
+    :return: the number of children
+    """
+    size = 0
+    stack = [t]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, Mapping):
+            size += len(cur)
+            stack.extend(cur.values())
+        elif cur is not None:
+            raise TypeError(f"Malformed Tree {t}")
+    return size
+
+
+def tree_width(d: Tree) -> int:
     """
     >>> d = {'a':{'b': 1, 'c':{'d':2}}, 'e': 3, 'f':{'g':4, 'h':{'i': 5}}}
     >>> tree_width(d)
@@ -122,7 +188,7 @@ def tree_width(d: Mapping) -> int:
     return max(c.values())
 
 
-def tree_from_binary(binary: List, start=1) -> Mapping:
+def tree_from_binary(binary: List, start=1) -> Tree:
     """
     >>> binary = [None, 'D', 'A', 'F', 'E', 'B', 'R', 'T', 'G', 'Q', None, None, 'V', None, 'J', 'L']
     >>> tree_from_binary(binary)
@@ -140,10 +206,10 @@ def tree_from_binary(binary: List, start=1) -> Mapping:
         if node is not None:
             children_pos = pos * 2
             stack.append(
-                (node,
-                 list_get(binary, children_pos),
-                 list_get(binary, children_pos + 1)
-                 )
+                    (node,
+                     list_get(binary, children_pos),
+                     list_get(binary, children_pos + 1)
+                     )
             )
             positions.append(children_pos)
             positions.append(children_pos + 1)
@@ -166,7 +232,7 @@ def tree_from_binary(binary: List, start=1) -> Mapping:
     return {node: new.pop()}
 
 
-def tree_to_binary(d, start=1) -> List:
+def tree_to_binary(t: Tree, start: int=1) -> List:
     """
     >>> tree = {'D': {'A': {'E': {'G': None, 'Q': None}, 'B': None}, 'F': {'R': {'V': None}, 'T': {'J': None, 'L': None}}}}
     >>> tree_to_binary(tree)
@@ -176,20 +242,20 @@ def tree_to_binary(d, start=1) -> List:
     :param start:
     :return:
     """
-    if len(d) != 1:
+    if len(t) != 1:
         raise ValueError()
-    k, v = next(iter(d.items()))
+    k, v = next(iter(t.items()))
     stack = [(start, v)]
     binary_positions = [(start, k)]
     binary_len = start
     while stack:
-        pos, d = stack.pop()
-        if d is not None:
+        pos, cur = stack.pop()
+        if cur is not None:
             children_pos = 2 * pos
-            if children_pos + len(d.items()) > binary_len:
-                binary_len = children_pos + len(d.items())
+            if children_pos + len(cur.items()) > binary_len:
+                binary_len = children_pos + len(cur.items())
 
-            for j, (k, v) in enumerate(d.items()):
+            for j, (k, v) in enumerate(cur.items()):
                 binary_positions.append((children_pos + j, k))
                 if v is not None:
                     stack.append((children_pos + j, v))
@@ -201,36 +267,36 @@ def tree_to_binary(d, start=1) -> List:
     return binary
 
 
-def tree_is_perfect(d) -> bool:
+def tree_is_perfect(t: Tree) -> bool:
     pass
 
 
-def tree_diameter(d) -> bool:
+def tree_diameter(t: Tree) -> bool:
     """
     The longest path between two nodes of the tree (passing from child to
     parent is allowed).
 
     For this dict:
 
-        >>> d = {'A': {'B': {'D': {'G': None, 'H': None},
+        >>> t = {'A': {'B': {'D': {'G': None, 'H': None},
         ... 'E': {'I': {'J': None}}}, 'C': {'F': None}}}
 
     The longest path is: J-I-E-B-D-G:
 
-        >>> tree_diameter(d)
+        >>> tree_diameter(t)
         5
 
     :param d:
     :return:
     """
-    if d is None:
+    if t is None:
         return 0
     else:
         depth1 = 0
         depth2 = 0
         diameter = 0
-        for k, v in d.items():
-            depth_v = tree_depth(v)
+        for k, v in t.items():
+            depth_v = tree_height(v) + 1
             diameter_v = tree_diameter(v)
             if depth_v > depth1:
                 depth1 = depth_v
@@ -245,39 +311,39 @@ def tree_diameter(d) -> bool:
         return diameter
 
 
-def tree_length(d) -> bool:
+def tree_length(tree: Tree) -> int:
     """
-    >>> d = {'A': None}
-    >>> tree_length(d)
+    >>> t = {'A': None}
+    >>> tree_length(t)
     0
-    >>> d = {'B': {'A': None}}
-    >>> tree_length(d)
+    >>> t = {'B': {'A': None}}
+    >>> tree_length(t)
     1
-    >>> d = {'I': {'B': {'A': None, 'R': None}}}
-    >>> tree_length(d)
+    >>> t = {'I': {'B': {'A': None, 'R': None}}}
+    >>> tree_length(t)
     5
-    >>> d = {'I': {'B': {'A': None, 'R': None}, 'O':  {'M': {'R': None, 'E': None, 'T': None, 'F': None}}, 'N': None}}
-    >>> tree_length(d)
+    >>> t = {'I': {'B': {'A': None, 'R': None}, 'O':  {'M': {'R': None, 'E': None, 'T': None, 'F': None}}, 'N': None}}
+    >>> tree_length(t)
     21
 
     :param d:
     :return:
     """
 
-    def tree_length_aux(d, level):
-        if d is None:
+    def tree_length_aux(t: Tree, level: int) -> int:
+        if t is None:
             return level - 1
         else:
             tl = level - 1
-            for k, v in d.items():
+            for k, v in t.items():
                 tl += tree_length_aux(v, level + 1)
             return tl
 
-    return tree_length_aux(d, 0) + 1
+    return tree_length_aux(tree, 0) + 1
 
 
-def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
-    Tuple[Tuple, Mapping]]:
+def tree_prune(tree: Tree, func_or_signature, maxprunes: int = -1) -> Iterator[
+    Tuple[Tuple, Tree]]:
     """
     Split the dict at the current sig.
 
@@ -307,16 +373,18 @@ def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
     :param func_or_signature:
     :return:
     """
-    def tree_prune_func(d1, cur_path):
+
+    def tree_prune_func(t: Tree, cur_path: Tuple[Hashable]
+                        ) -> Iterator[Tuple[Tuple[Hashable], Tree]]:
         nonlocal maxprunes
         if maxprunes == 0:
             return
 
-        if isinstance(d1, Mapping):
-            for k, v in d1.items():
+        if isinstance(t, Mapping):
+            for k, v in t.items():
                 next_path = cur_path + (k,)
                 if func_or_signature(next_path):
-                    d1[k] = None
+                    t[k] = None
                     if maxprunes:
                         yield next_path, v
                         maxprunes -= 1
@@ -325,20 +393,20 @@ def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
 
                 yield from tree_prune_func(v, next_path)
 
-    def tree_prune_sig(d1: Mapping, sig: Signature, cur_path: Tuple
-                       ) -> Iterator[Tuple[Tuple, Mapping]]:
+    def tree_prune_sig(t: Tree, sig: Signature, cur_path: Tuple[Hashable]
+                       ) -> Iterator[Tuple[Tuple[Hashable], Tree]]:
         nonlocal maxprunes
         if maxprunes == 0:
             return
 
-        if isinstance(d1, Mapping):
-            for k, v in d1.items():
+        if isinstance(t, Mapping):
+            for k, v in t.items():
                 if maxprunes:
                     try:
                         next_path = cur_path + (k,)
                         next_sig = sig.take(k)
                         if next_sig is None:
-                            d1[k] = None
+                            t[k] = None
                             yield next_path, v
                             maxprunes -= 1
                         else:
@@ -347,14 +415,14 @@ def tree_prune(d: Mapping, func_or_signature, maxprunes: int = -1) -> Iterator[
                         pass
 
     if isinstance(func_or_signature, Callable):
-        yield from tree_prune_func(d, tuple())
+        yield from tree_prune_func(tree, tuple())
     elif isinstance(func_or_signature, Signature):
-        yield from tree_prune_sig(d, func_or_signature, tuple())
+        yield from tree_prune_sig(tree, func_or_signature, tuple())
     else:
         raise TypeError()
 
 
-def tree_hook(d1: Mapping, func_or_signature, d2: Mapping,
+def tree_hook(tree1: MutableTree, func_or_signature, tree2: Tree,
               shallow: bool = True):
     """
     >>> d1 = {'a': {'b': None, 'c': {'d': None, 'e': None}}}
@@ -369,24 +437,11 @@ def tree_hook(d1: Mapping, func_or_signature, d2: Mapping,
     True
     """
 
-    def tree_hook_sig(d: Mapping):
+    def tree_hook_sig(t: Tree):
         pass
 
-    def tree_hook_func(d: Mapping, cur_path):
-        if isinstance(d, Mapping):
-            for k, v in d.items():
-                next_path = cur_path + (k,)
-                if func_or_signature(next_path):
-                    if shallow:
-                        d[k] = d2
-                    else:
-                        d[k] = tree_clone(d2)
-                    return next_path
-                else:
-                    return tree_hook_func(v, next_path)
-
-    def tree_hook_func(d: MutableMapping):
-        stack = [(d, tuple())]
+    def tree_hook_func(t: MutableTree):
+        stack = [(t, tuple())]
         while stack:
             cur, cur_path = stack.pop()
             if isinstance(cur, Mapping):
@@ -394,14 +449,14 @@ def tree_hook(d1: Mapping, func_or_signature, d2: Mapping,
                     next_path = cur_path + (k,)
                     if func_or_signature(next_path):
                         if shallow:
-                            cur[k] = d2
+                            cur[k] = tree2
                         else:
-                            cur[k] = tree_clone(d2)
+                            cur[k] = tree_clone(tree2)
                         return next_path
                     else:
                         stack.insert(0, (v, next_path))
 
-    return tree_hook_func(d1)
+    return tree_hook_func(tree1)
 
 
 if __name__ == "__main__":

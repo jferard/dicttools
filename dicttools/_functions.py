@@ -20,7 +20,7 @@
 import sys
 from typing import Mapping, Optional, Callable, List, Union, Iterable
 
-from dicttools.types import K, HV, F, V
+from dicttools._types import K, HV, F, V
 
 
 def map_keys(func: Callable[[K], F], d: Mapping[K, V]) -> Mapping[F, V]:

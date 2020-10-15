@@ -17,7 +17,8 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from typing import (NewType, Any, Mapping, Union, Tuple, TypeVar)
+from typing import (NewType, Any, Mapping, Union, Tuple, TypeVar,
+                    MutableMapping)
 from collections.abc import Hashable
 
 K = TypeVar('K', bound=Hashable)
@@ -31,3 +32,4 @@ NestedItem = NewType('JsonItem', Tuple[Path, Any])
 
 NoneType = type(None)
 Tree = NewType('Tree', Mapping[Hashable, Union[NoneType, "Tree"]])
+MutableTree = NewType('MutableTree', MutableMapping[Hashable, Union[NoneType, "MutableTree"]])

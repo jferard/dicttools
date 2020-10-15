@@ -23,7 +23,7 @@ from typing import List, Mapping, Tuple, Hashable, Any, Iterable
 from dicttools import Item
 from dicttools._util import Item
 from dicttools.json import JsonItem
-from dicttools.types import Tree
+from dicttools._types import Tree
 
 
 def list_get(a_list: List, i: int):
